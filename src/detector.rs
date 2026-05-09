@@ -143,8 +143,9 @@ pub fn detect_typo_repeater(
         Some(path) => path.to_path_buf(),
         None => default_history_path(),
     };
-    let Ok(content) = fs::read_to_string(path) else {
-        return Ok(None);
+    let content = match fs::read(&path) {
+        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Err(_) => return Ok(None),
     };
 
     let lines: Vec<String> = content
