@@ -16,7 +16,7 @@ pub struct FsWatcher {
 
 impl FsWatcher {
     pub fn start(config: &Config, sender: mpsc::Sender<GhostEvent>) -> Result<Self> {
-        let excludes = config.watch.exclude.clone();
+        let excludes = config.effective_excludes();
         let mut watcher = RecommendedWatcher::new(
             move |result: notify::Result<Event>| {
                 let Ok(event) = result else {

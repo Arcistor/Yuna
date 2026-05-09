@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use digital_ghost::app::open_default_store;
+use digital_ghost::app::{
+    daemon_status, open_default_store, start_daemon_process, stop_daemon_process, DaemonState,
+};
 
 #[derive(Debug, Parser)]
 #[command(name = "ghostctl", about = "Inspect the Digital Ghost daemon state")]
@@ -11,6 +13,8 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    Start,
+    Stop,
     Status,
     Notes,
     Mood,
@@ -22,14 +26,29 @@ fn main() -> Result<()> {
     let store = open_default_store()?;
 
     match cli.command {
+        Command::Start => {
+            let pid = start_daemon_process()?;
+            println!("started: {pid}");
+        }
+        Command::Stop => match stop_daemon_process()? {
+            Some(pid) => println!("stopped: {pid}"),
+            None => println!("stopped: already"),
+        },
         Command::Status => {
+            let daemon = daemon_status()?;
             let mood = store.get_mood()?;
             let last_event = store
                 .last_event_time()?
                 .map(|time| time.to_string())
                 .unwrap_or_else(|| "never".to_string());
             let note_count = store.list_undeleted_notes()?.len();
-            println!("running: unknown");
+            println!("running: {}", matches!(daemon.state, DaemonState::Running));
+            if let Some(pid) = daemon.pid {
+                println!("pid: {pid}");
+            }
+            if daemon.state == DaemonState::Stale {
+                println!("pid_status: stale_removed");
+            }
             println!("mood: {mood}");
             println!("last_event: {last_event}");
             println!("unread_notes: {note_count}");

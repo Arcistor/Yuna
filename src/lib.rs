@@ -1,9 +1,11 @@
 pub mod ai;
+pub mod aliases;
 pub mod app;
 pub mod ascii;
 pub mod config;
 pub mod detector;
 pub mod haunter;
+pub mod installer;
 pub mod mood;
 pub mod store;
 pub mod types;

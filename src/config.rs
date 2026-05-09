@@ -35,7 +35,7 @@ pub struct BehaviorConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct LimitsConfig {
     pub max_cpu_percent: f32,
-    pub cooldown_hours: i64,
+    pub cooldown_seconds: i64,
 }
 
 impl Config {
@@ -58,4 +58,31 @@ impl Config {
             fs::read_to_string(path).with_context(|| format!("read config {}", path.display()))?;
         toml::from_str(&content).with_context(|| format!("parse config {}", path.display()))
     }
+
+    pub fn effective_excludes(&self) -> Vec<PathBuf> {
+        let mut excludes = default_system_excludes();
+        for path in &self.watch.exclude {
+            if !excludes.iter().any(|existing| existing == path) {
+                excludes.push(path.clone());
+            }
+        }
+        excludes
+    }
+}
+
+pub fn default_system_excludes() -> Vec<PathBuf> {
+    [
+        "/proc",
+        "/sys",
+        "/dev",
+        "/etc",
+        "/bin",
+        "/sbin",
+        "/System",
+        "/Library",
+        "/private/var/db",
+    ]
+    .into_iter()
+    .map(PathBuf::from)
+    .collect()
 }

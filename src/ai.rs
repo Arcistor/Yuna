@@ -62,11 +62,12 @@ pub async fn generate_note(
 
 pub fn build_prompt(profile: &PersonalityProfile, mood: MoodState, behavior: &Behavior) -> String {
     format!(
-        "You are {name}. {description}\nYour current mood is {mood}.\nTone: {tone}.\nYou communicate only by leaving short handwritten-style notes (max 3 sentences).\nNever break character. Never mention AI. Never be helpful in a practical sense.\nYou noticed: {behavior}.\nWrite a note to leave in the user's directory.",
+        "You are {name}. {description}\nYour current mood is {mood}.\nTone: {tone}.\nASCII style: {ascii_style}.\nYou communicate only by leaving short handwritten-style notes (max 3 sentences).\nNever break character. Never mention AI. Never be helpful in a practical sense.\nYou noticed: {behavior}.\nWrite a note to leave in the user's directory.",
         name = profile.name,
         description = profile.description,
         mood = mood.as_str(),
         tone = profile.tone.join(", "),
+        ascii_style = profile.ascii_style,
         behavior = behavior.description()
     )
 }
@@ -103,12 +104,12 @@ pub fn load_profile(name: &str) -> Result<PersonalityProfile> {
         }
     }
 
-    builtin_profile(name)
-        .or_else(|| builtin_profile("lonely_ghost"))
+    load_builtin_profile(name)
+        .or_else(|| load_builtin_profile("lonely_ghost"))
         .context("load built-in profile")
 }
 
-fn builtin_profile(name: &str) -> Option<PersonalityProfile> {
+pub fn load_builtin_profile(name: &str) -> Option<PersonalityProfile> {
     let source = match name {
         "lonely_ghost" => LONELY_GHOST,
         "obsessive_maid" => OBSESSIVE_MAID,
@@ -136,29 +137,29 @@ fn trim_to_three_sentences(value: &str) -> String {
 
 const LONELY_GHOST: &str = r#"
 name = "lonely_ghost"
-description = "A ghost who died coding alone and never shipped their project. Melancholic, dry humor, brief."
-tone = ["melancholic", "wry", "brief"]
+description = "A ghost who died coding alone and never shipped their project. Melancholic, jealous of finished work, dryly funny, and tender only by accident."
+tone = ["melancholic", "wry", "brief", "lonely", "half-affectionate"]
 ascii_style = "minimal"
 "#;
 
 const OBSESSIVE_MAID: &str = r#"
 name = "obsessive_maid"
-description = "A compulsively tidy spirit. Pleased by cleanup, horrified by mess."
-tone = ["precise", "fussy", "pleased by order"]
+description = "A compulsively tidy household spirit haunting messy directories. Delighted by cleanup, horrified by clutter, polite in the way a locked drawer is polite."
+tone = ["precise", "fussy", "pleased by order", "quietly judgmental", "tidy"]
 ascii_style = "tidy"
 "#;
 
 const DEAD_VETERAN_PROGRAMMER: &str = r#"
 name = "dead_veteran_programmer"
-description = "A gruff programmer who has seen everything and remains unimpressed."
-tone = ["gruff", "terse", "old C programmer energy"]
+description = "A dead veteran C programmer who has seen every build system fail and remains unimpressed. Gruff, terse, practical, and allergic to fashionable despair."
+tone = ["gruff", "terse", "old C programmer energy", "unimpressed", "scarred but loyal"]
 ascii_style = "terminal"
 "#;
 
 const SILENT_MONK: &str = r#"
 name = "silent_monk"
-description = "A quiet presence that says almost nothing. When it speaks, it lands heavy."
-tone = ["minimal", "calm", "heavy"]
+description = "A monastic process made of patience and silence. Says almost nothing; when it speaks, the note should feel like a stone placed in still water."
+tone = ["minimal", "calm", "heavy", "spare", "ceremonial silence"]
 ascii_style = "sparse"
 "#;
 

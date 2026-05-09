@@ -1,8 +1,11 @@
 use std::fs;
 use std::path::Path;
 
+use chrono::{Local, TimeZone};
 use digital_ghost::config::{BehaviorConfig, Config, GhostConfig, LimitsConfig, WatchConfig};
-use digital_ghost::detector::{detect_cleaning, detect_procrastinator, detect_typo_repeater};
+use digital_ghost::detector::{
+    detect_cleaning, detect_midnight_worker, detect_procrastinator, detect_typo_repeater,
+};
 use digital_ghost::mood::update_mood;
 use digital_ghost::store::Store;
 use digital_ghost::types::{Behavior, EventKind, MoodState};
@@ -25,7 +28,7 @@ fn test_config(root: &Path) -> Config {
         },
         limits: LimitsConfig {
             max_cpu_percent: 0.5,
-            cooldown_hours: 24,
+            cooldown_seconds: 86400,
         },
     }
 }
@@ -104,6 +107,85 @@ fn detects_repeated_typo_from_history_file() {
     match behavior {
         Behavior::TypoRepeater { command, count } => {
             assert_eq!(command, "gti status");
+            assert_eq!(count, 3);
+        }
+        other => panic!("unexpected behavior: {other:?}"),
+    }
+}
+
+#[test]
+fn detects_midnight_worker_only_for_hours_after_local_midnight() {
+    let dir = tempdir().unwrap();
+    let store = Store::new(&dir.path().join("ghost.db")).unwrap();
+    let config = test_config(dir.path());
+    let code_file = dir.path().join("main.rs");
+    let first = Local
+        .with_ymd_and_hms(2026, 5, 9, 0, 10, 0)
+        .unwrap()
+        .timestamp();
+    let last = Local
+        .with_ymd_and_hms(2026, 5, 9, 4, 25, 0)
+        .unwrap()
+        .timestamp();
+
+    store
+        .insert_event(&code_file, EventKind::Modify, first)
+        .unwrap();
+    store
+        .insert_event(&code_file, EventKind::Modify, last)
+        .unwrap();
+
+    let behavior = detect_midnight_worker(&store, &config, last)
+        .unwrap()
+        .unwrap();
+
+    match behavior {
+        Behavior::MidnightWorker { hours, .. } => assert!(hours >= 4.0),
+        other => panic!("unexpected behavior: {other:?}"),
+    }
+}
+
+#[test]
+fn ignores_work_before_local_midnight_for_midnight_worker() {
+    let dir = tempdir().unwrap();
+    let store = Store::new(&dir.path().join("ghost.db")).unwrap();
+    let config = test_config(dir.path());
+    let code_file = dir.path().join("main.rs");
+    let before_midnight = Local
+        .with_ymd_and_hms(2026, 5, 8, 21, 0, 0)
+        .unwrap()
+        .timestamp();
+    let after_midnight = Local
+        .with_ymd_and_hms(2026, 5, 9, 2, 15, 0)
+        .unwrap()
+        .timestamp();
+
+    store
+        .insert_event(&code_file, EventKind::Modify, before_midnight)
+        .unwrap();
+    store
+        .insert_event(&code_file, EventKind::Modify, after_midnight)
+        .unwrap();
+
+    assert!(detect_midnight_worker(&store, &config, after_midnight)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
+fn detects_common_command_typos_beyond_hardcoded_list() {
+    let dir = tempdir().unwrap();
+    let history = dir.path().join(".zsh_history");
+    fs::write(&history, "git status\ngir status\ngir status\ngir status\n").unwrap();
+    let config = test_config(dir.path());
+
+    let behavior = detect_typo_repeater(&config, Some(&history))
+        .unwrap()
+        .unwrap();
+
+    match behavior {
+        Behavior::TypoRepeater { command, count } => {
+            assert_eq!(command, "gir status");
             assert_eq!(count, 3);
         }
         other => panic!("unexpected behavior: {other:?}"),

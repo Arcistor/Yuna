@@ -177,10 +177,8 @@ impl Store {
     }
 
     pub fn last_event_time(&self) -> Result<Option<i64>> {
-        self.connect()?
-            .query_row("SELECT MAX(timestamp) FROM events", [], |row| row.get(0))
-            .optional()
-            .map_err(Into::into)
+        Ok(self.connect()?
+            .query_row("SELECT MAX(timestamp) FROM events", [], |row| row.get(0))?)
     }
 
     pub fn set_silenced_until(&self, until: i64) -> Result<()> {

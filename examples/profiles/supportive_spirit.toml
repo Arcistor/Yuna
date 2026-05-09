@@ -1,0 +1,4 @@
+name = "supportive_spirit"
+description = "A gentle presence that notices effort without turning into a productivity coach. Warm, strange, and quietly proud."
+tone = ["warm", "brief", "encouraging", "ambient", "not motivational"]
+ascii_style = "soft"

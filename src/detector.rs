@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use chrono::{Local, TimeZone};
 
 use crate::config::Config;
 use crate::store::Store;
@@ -85,7 +86,7 @@ pub fn detect_midnight_worker(
         return Ok(None);
     }
 
-    let day_start = now - (now % 86_400);
+    let day_start = local_midnight_timestamp(now);
     let events = store.query_events(day_start, Some(EventKind::Modify))?;
     let mut first_by_dir: HashMap<PathBuf, i64> = HashMap::new();
     let mut last_by_dir: HashMap<PathBuf, i64> = HashMap::new();
@@ -155,7 +156,7 @@ pub fn detect_typo_repeater(
 }
 
 fn in_cooldown(store: &Store, config: &Config, trigger: &str, now: i64) -> Result<bool> {
-    let since = now - config.limits.cooldown_hours * 60 * 60;
+    let since = now - config.limits.cooldown_seconds;
     store.recent_note_exists(trigger, since)
 }
 
@@ -186,5 +187,73 @@ fn normalize_history_line(line: &str) -> String {
 
 fn looks_like_typo(command: &str) -> bool {
     let first = command.split_whitespace().next().unwrap_or_default();
-    matches!(first, "gti" | "sl" | "pyhton" | "pnpmn" | "nmp")
+    if matches!(first, "gti" | "sl" | "pyhton" | "pnpmn" | "nmp") {
+        return true;
+    }
+
+    common_commands()
+        .iter()
+        .any(|valid| first != *valid && edit_distance_at_most_one(first, valid))
+}
+
+fn common_commands() -> &'static [&'static str] {
+    &[
+        "git", "npm", "pnpm", "yarn", "python", "python3", "cargo", "make", "docker", "kubectl",
+        "node",
+    ]
+}
+
+fn edit_distance_at_most_one(left: &str, right: &str) -> bool {
+    let left_chars: Vec<char> = left.chars().collect();
+    let right_chars: Vec<char> = right.chars().collect();
+    let len_diff = left_chars.len().abs_diff(right_chars.len());
+    if len_diff > 1 {
+        return false;
+    }
+
+    if left_chars.len() == right_chars.len() {
+        return left_chars
+            .iter()
+            .zip(right_chars.iter())
+            .filter(|(left, right)| left != right)
+            .count()
+            <= 1;
+    }
+
+    let (shorter, longer) = if left_chars.len() < right_chars.len() {
+        (&left_chars, &right_chars)
+    } else {
+        (&right_chars, &left_chars)
+    };
+
+    let mut short_index = 0;
+    let mut long_index = 0;
+    let mut edits = 0;
+    while short_index < shorter.len() && long_index < longer.len() {
+        if shorter[short_index] == longer[long_index] {
+            short_index += 1;
+            long_index += 1;
+        } else {
+            edits += 1;
+            long_index += 1;
+            if edits > 1 {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+fn local_midnight_timestamp(now: i64) -> i64 {
+    let Some(now_local) = Local.timestamp_opt(now, 0).single() else {
+        return now - (now % 86_400);
+    };
+    let Some(midnight) = now_local.date_naive().and_hms_opt(0, 0, 0) else {
+        return now - (now % 86_400);
+    };
+    midnight
+        .and_local_timezone(Local)
+        .single()
+        .map(|value| value.timestamp())
+        .unwrap_or_else(|| now - (now % 86_400))
 }

@@ -42,7 +42,24 @@ fn loads_config_from_explicit_path() {
     assert_eq!(config.ghost.personality, "lonely_ghost");
     assert_eq!(config.watch.paths.len(), 1);
     assert_eq!(config.behavior.note_lifetime_minutes, 60);
-    assert_eq!(config.limits.cooldown_hours, 24);
+    assert_eq!(config.limits.cooldown_seconds, 86400);
+}
+
+#[test]
+fn config_adds_default_system_excludes_to_user_excludes() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join(".ghostconfig");
+    write_config(&path);
+
+    let config = Config::load_from_path(&path).unwrap();
+    let excludes = config.effective_excludes();
+
+    assert!(excludes.iter().any(|path| path == Path::new("/proc")));
+    assert!(excludes.iter().any(|path| path == Path::new("/sys")));
+    assert!(excludes.iter().any(|path| path == Path::new("/etc")));
+    assert!(excludes
+        .iter()
+        .any(|path| path == Path::new("/tmp/ghost-watch/.git")));
 }
 
 #[test]

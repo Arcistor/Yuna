@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use digital_ghost::ai::{build_prompt, fallback_note, PersonalityProfile};
+use digital_ghost::ai::{build_prompt, fallback_note, load_builtin_profile, PersonalityProfile};
 use digital_ghost::ascii::ascii_for_mood;
 use digital_ghost::config::{BehaviorConfig, Config, GhostConfig, LimitsConfig, WatchConfig};
 use digital_ghost::haunter::{drop_note, reap_notes};
@@ -26,7 +26,7 @@ fn test_config(root: &Path) -> Config {
         },
         limits: LimitsConfig {
             max_cpu_percent: 0.5,
-            cooldown_hours: 24,
+            cooldown_seconds: 86400,
         },
     }
 }
@@ -50,6 +50,34 @@ fn prompt_contains_personality_mood_and_behavior() {
     assert!(prompt.contains("grateful"));
     assert!(prompt.contains("deleted 12 files"));
     assert!(prompt.contains("Never mention AI"));
+}
+
+#[test]
+fn built_in_profiles_include_distinct_voice_guidance() {
+    let maid = load_builtin_profile("obsessive_maid").unwrap();
+    let veteran = load_builtin_profile("dead_veteran_programmer").unwrap();
+    let monk = load_builtin_profile("silent_monk").unwrap();
+
+    assert!(maid.description.contains("tidy"));
+    assert!(maid.tone.iter().any(|tone| tone.contains("fussy")));
+    assert!(veteran.description.contains("C"));
+    assert!(veteran.tone.iter().any(|tone| tone.contains("unimpressed")));
+    assert!(monk.description.contains("silence"));
+    assert_eq!(monk.ascii_style, "sparse");
+}
+
+#[test]
+fn prompt_includes_profile_ascii_style_as_voice_hint() {
+    let profile = load_builtin_profile("dead_veteran_programmer").unwrap();
+    let behavior = Behavior::MidnightWorker {
+        directory: "/tmp/project".into(),
+        hours: 4.5,
+    };
+
+    let prompt = build_prompt(&profile, MoodState::Concerned, &behavior);
+
+    assert!(prompt.contains("ASCII style: terminal"));
+    assert!(prompt.contains("unimpressed"));
 }
 
 #[test]
