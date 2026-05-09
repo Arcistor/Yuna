@@ -54,6 +54,42 @@ pub async fn run_daemon() -> Result<()> {
         }
     });
 
+    let typo_store = store.clone();
+    let typo_config = config.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            let now = chrono::Utc::now().timestamp();
+            if typo_store.is_silenced(now).unwrap_or(false) {
+                continue;
+            }
+            let Ok(Some(behavior)) = detector::detect_typo_repeater(&typo_config, None) else {
+                continue;
+            };
+            let since = now - typo_config.limits.cooldown_seconds;
+            let already_noted = typo_store
+                .recent_note_exists(behavior.trigger_name(), since)
+                .unwrap_or(true);
+            if already_noted {
+                continue;
+            }
+            let current = typo_store.get_mood().unwrap_or(MoodState::Calm);
+            let mood = update_mood(current, &behavior);
+            if typo_store.set_mood(mood).is_err() {
+                continue;
+            }
+            let note = match generate_note(&typo_config, mood, &behavior).await {
+                Ok(n) => n,
+                Err(_) => continue,
+            };
+            let alias_note = maybe_inject_alias(&typo_config, &behavior).ok().flatten();
+            let final_note = alias_note.unwrap_or(note);
+            let directory = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+            let _ = drop_note(&directory, &final_note, ascii_for_mood(&mood), &typo_store, &behavior, now).await;
+        }
+    });
+
     while let Some(event) = receiver.recv().await {
         store.insert_event(&event.path, event.kind, event.timestamp)?;
         let now = chrono::Utc::now().timestamp();
@@ -191,10 +227,19 @@ pub fn start_daemon_process() -> Result<u32> {
     }
 
     let ghost_path = current_ghost_binary_path()?;
+    let log_path = dirs::home_dir()
+        .context("locate home directory")?
+        .join(".ghost")
+        .join("ghost.log");
+    let log_file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .with_context(|| format!("open log file {}", log_path.display()))?;
     let child = Command::new(&ghost_path)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(log_file)
         .spawn()
         .with_context(|| format!("start daemon {}", ghost_path.display()))?;
     Ok(child.id())
