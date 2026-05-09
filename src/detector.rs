@@ -10,15 +10,21 @@ use crate::store::Store;
 use crate::types::{Behavior, EventKind};
 
 pub fn detect(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
-    if let Some(behavior) = detect_cleaning(store, config, now)? {
-        return Ok(Some(behavior));
-    }
-    if let Some(behavior) = detect_midnight_worker(store, config, now)? {
-        return Ok(Some(behavior));
-    }
-    if let Some(behavior) = detect_procrastinator(store, config, now)? {
-        return Ok(Some(behavior));
-    }
+    if let Some(b) = detect_cleaning(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_fresh_start(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_ghosted(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_midnight_worker(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_night_owl(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_weekend_warrior(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_deadline_mode(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_hoarder(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_archaeologist(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_ghost_commit(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_revert_spiral(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_duplicator(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_empty_nest(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_procrastinator(store, config, now)? { return Ok(Some(b)); }
+    if in_cooldown(store, config, "typo_repeater", now)? { return Ok(None); }
     detect_typo_repeater(config, None)
 }
 
@@ -270,3 +276,311 @@ fn local_midnight_timestamp(now: i64) -> i64 {
         .map(|value| value.timestamp())
         .unwrap_or_else(|| now - (now % 86_400))
 }
+
+pub fn detect_hoarder(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "hoarder", now)? {
+        return Ok(None);
+    }
+    let day_start = local_midnight_timestamp(now);
+    let events = store.query_events(day_start, Some(EventKind::Modify))?;
+    let mut counts: HashMap<PathBuf, u32> = HashMap::new();
+    for event in events {
+        *counts.entry(event.path).or_default() += 1;
+    }
+    let best = counts.into_iter().filter(|(_, c)| *c > 200).max_by_key(|(_, c)| *c);
+    let Some((path, modify_count)) = best else {
+        return Ok(None);
+    };
+    let directory = path.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from("."));
+    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
+    if is_in_git_repo(&directory) && has_uncommitted_changes(&directory) {
+        return Ok(Some(Behavior::Hoarder { directory, filename, modify_count }));
+    }
+    Ok(None)
+}
+
+pub fn detect_archaeologist(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "archaeologist", now)? {
+        return Ok(None);
+    }
+    let six_months = 6 * 30 * 24 * 3600_i64;
+    let recent_events = store.query_events(now - 3600, Some(EventKind::Modify))?;
+    for event in recent_events {
+        let older = store.query_events(0, Some(EventKind::Modify))?
+            .into_iter()
+            .filter(|e| e.path == event.path && e.timestamp < now - six_months)
+            .max_by_key(|e| e.timestamp);
+        let Some(old_event) = older else { continue };
+        let months_dormant = ((now - old_event.timestamp) / (30 * 24 * 3600)) as u32;
+        let directory = event.path.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from("."));
+        let filename = event.path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
+        return Ok(Some(Behavior::Archaeologist { directory, filename, months_dormant }));
+    }
+    Ok(None)
+}
+
+pub fn detect_empty_nest(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "empty_nest", now)? {
+        return Ok(None);
+    }
+    let seven_days = 7 * 24 * 3600_i64;
+    let create_events = store.query_events(0, Some(EventKind::Create))?;
+    for event in create_events {
+        if event.timestamp > now - seven_days {
+            continue;
+        }
+        if !event.path.is_dir() {
+            continue;
+        }
+        let is_empty = event.path.read_dir().map(|mut d| d.next().is_none()).unwrap_or(false);
+        if !is_empty {
+            continue;
+        }
+        let has_later = store.query_events(event.timestamp + 1, None)?
+            .into_iter()
+            .any(|e| e.path.starts_with(&event.path));
+        if !has_later {
+            let days_empty = ((now - event.timestamp) / (24 * 3600)) as u32;
+            return Ok(Some(Behavior::EmptyNest { directory: event.path, days_empty }));
+        }
+    }
+    Ok(None)
+}
+
+pub fn detect_duplicator(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "duplicator", now)? {
+        return Ok(None);
+    }
+    let events = store.query_events(now - 600, Some(EventKind::Create))?;
+    let mut by_dir: HashMap<PathBuf, Vec<String>> = HashMap::new();
+    for event in events {
+        let Some(parent) = event.path.parent().map(Path::to_path_buf) else { continue };
+        let Some(name) = event.path.file_stem().and_then(|n| n.to_str()) else { continue };
+        by_dir.entry(parent).or_default().push(name.to_string());
+    }
+    for (directory, names) in by_dir {
+        let mut base_counts: HashMap<String, u32> = HashMap::new();
+        for name in &names {
+            let base = name.trim_end_matches(|c: char| c.is_numeric() || c == '_' || c == '-').to_string();
+            if !base.is_empty() {
+                *base_counts.entry(base).or_default() += 1;
+            }
+        }
+        if let Some((base_name, count)) = base_counts.into_iter().filter(|(_, c)| *c >= 3).max_by_key(|(_, c)| *c) {
+            return Ok(Some(Behavior::Duplicator { directory, base_name, count }));
+        }
+    }
+    Ok(None)
+}
+
+pub fn detect_ghost_commit(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "ghost_commit", now)? {
+        return Ok(None);
+    }
+    let five_days = 5 * 24 * 3600_i64;
+    let events = store.query_events(now - five_days, Some(EventKind::Modify))?;
+    let mut dirs: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+    for event in events {
+        if let Some(parent) = event.path.parent().map(Path::to_path_buf) {
+            dirs.insert(parent);
+        }
+    }
+    for directory in dirs {
+        if !is_in_git_repo(&directory) {
+            continue;
+        }
+        let last_commit_age = git_last_commit_age_seconds(&directory);
+        if last_commit_age >= five_days {
+            let days_uncommitted = (last_commit_age / (24 * 3600)) as u32;
+            return Ok(Some(Behavior::GhostCommit { directory, days_uncommitted }));
+        }
+    }
+    Ok(None)
+}
+
+pub fn detect_revert_spiral(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "revert_spiral", now)? {
+        return Ok(None);
+    }
+    let hour_ago = now - 3600;
+    let events = store.query_events(hour_ago, Some(EventKind::Modify))?;
+    let mut counts: HashMap<PathBuf, u32> = HashMap::new();
+    for event in &events {
+        *counts.entry(event.path.clone()).or_default() += 1;
+    }
+    let best = counts.into_iter().filter(|(_, c)| *c >= 20).max_by_key(|(_, c)| *c);
+    let Some((path, revert_count)) = best else { return Ok(None) };
+    let directory = path.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from("."));
+    let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string();
+    Ok(Some(Behavior::RevertSpiral { directory, filename, revert_count }))
+}
+
+pub fn detect_alias_candidate(_config: &Config, history_path: Option<&Path>) -> Result<Option<Behavior>> {
+    let path = match history_path {
+        Some(p) => p.to_path_buf(),
+        None => default_history_path(),
+    };
+    let content = match fs::read(&path) {
+        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Err(_) => return Ok(None),
+    };
+    let lines: Vec<String> = content
+        .lines()
+        .rev()
+        .take(200)
+        .map(normalize_history_line)
+        .filter(|l| l.len() > 30 && !l.is_empty())
+        .collect();
+    let mut counts: HashMap<String, u32> = HashMap::new();
+    for line in lines {
+        if !looks_like_typo(&line) {
+            *counts.entry(line).or_default() += 1;
+        }
+    }
+    Ok(counts.into_iter().filter(|(_, c)| *c >= 5).max_by_key(|(_, c)| *c)
+        .map(|(command, count)| Behavior::AliasCandidate { command, count }))
+}
+
+pub fn detect_night_owl(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "night_owl", now)? {
+        return Ok(None);
+    }
+    let now_local = match Local.timestamp_opt(now, 0).single() {
+        Some(t) => t,
+        None => return Ok(None),
+    };
+    let hour = now_local.format("%H").to_string().parse::<u32>().unwrap_or(12);
+    if !(2..=5).contains(&hour) {
+        return Ok(None);
+    }
+    let events = store.query_events(now - 900, Some(EventKind::Modify))?;
+    let dirs: std::collections::HashSet<PathBuf> = events.into_iter()
+        .filter_map(|e| e.path.parent().map(Path::to_path_buf))
+        .collect();
+    if let Some(directory) = dirs.into_iter().next() {
+        return Ok(Some(Behavior::NightOwl { directory, hour }));
+    }
+    Ok(None)
+}
+
+pub fn detect_weekend_warrior(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "weekend_warrior", now)? {
+        return Ok(None);
+    }
+    let now_local = match Local.timestamp_opt(now, 0).single() {
+        Some(t) => t,
+        None => return Ok(None),
+    };
+    let weekday = now_local.format("%u").to_string().parse::<u32>().unwrap_or(1);
+    if weekday < 6 {
+        return Ok(None);
+    }
+    let day_start = local_midnight_timestamp(now);
+    let events = store.query_events(day_start, Some(EventKind::Modify))?;
+    let mut first_by_dir: HashMap<PathBuf, i64> = HashMap::new();
+    let mut last_by_dir: HashMap<PathBuf, i64> = HashMap::new();
+    for event in events {
+        if !is_code_file(&event.path) { continue; }
+        let dir = event.path.parent().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from("."));
+        first_by_dir.entry(dir.clone()).and_modify(|t| *t = (*t).min(event.timestamp)).or_insert(event.timestamp);
+        last_by_dir.entry(dir).and_modify(|t| *t = (*t).max(event.timestamp)).or_insert(event.timestamp);
+    }
+    for (directory, first) in first_by_dir {
+        let Some(last) = last_by_dir.get(&directory) else { continue };
+        let hours = (*last - first) as f32 / 3600.0;
+        if hours >= 3.0 {
+            return Ok(Some(Behavior::WeekendWarrior { directory, hours }));
+        }
+    }
+    Ok(None)
+}
+
+pub fn detect_deadline_mode(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "deadline_mode", now)? {
+        return Ok(None);
+    }
+    let today_events = store.query_events(now - 86400, None)?.len() as f32;
+    let week_events = store.query_events(now - 7 * 86400, None)?.len() as f32;
+    let daily_avg = week_events / 7.0;
+    if daily_avg < 50.0 {
+        return Ok(None);
+    }
+    let multiplier = today_events / daily_avg;
+    if multiplier < 3.0 {
+        return Ok(None);
+    }
+    let recent = store.query_events(now - 3600, Some(EventKind::Modify))?;
+    let dirs: std::collections::HashSet<PathBuf> = recent.into_iter()
+        .filter_map(|e| e.path.parent().map(Path::to_path_buf))
+        .collect();
+    if let Some(directory) = dirs.into_iter().next() {
+        return Ok(Some(Behavior::DeadlineMode { directory, multiplier }));
+    }
+    Ok(None)
+}
+
+pub fn detect_ghosted(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "ghosted", now)? {
+        return Ok(None);
+    }
+    let last = store.last_event_time()?;
+    let Some(last_ts) = last else { return Ok(None) };
+    let days_absent = ((now - last_ts) / (24 * 3600)) as u32;
+    if days_absent >= 3 {
+        return Ok(Some(Behavior::Ghosted { days_absent }));
+    }
+    Ok(None)
+}
+
+pub fn detect_fresh_start(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "fresh_start", now)? {
+        return Ok(None);
+    }
+    let recent = store.query_events(now - 300, None)?;
+    if recent.is_empty() {
+        return Ok(None);
+    }
+    let prev = store.query_events(0, None)?;
+    let before_gap: Vec<_> = prev.iter().filter(|e| e.timestamp < now - 3 * 24 * 3600).collect();
+    let Some(last_before) = before_gap.iter().max_by_key(|e| e.timestamp) else {
+        return Ok(None);
+    };
+    let days_absent = ((now - last_before.timestamp) / (24 * 3600)) as u32;
+    if days_absent >= 3 {
+        return Ok(Some(Behavior::FreshStart { days_absent }));
+    }
+    Ok(None)
+}
+
+fn is_in_git_repo(directory: &Path) -> bool {
+    let mut path = directory.to_path_buf();
+    loop {
+        if path.join(".git").exists() {
+            return true;
+        }
+        if !path.pop() {
+            return false;
+        }
+    }
+}
+
+fn has_uncommitted_changes(directory: &Path) -> bool {
+    std::process::Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(directory)
+        .output()
+        .map(|o| !o.stdout.is_empty())
+        .unwrap_or(false)
+}
+
+fn git_last_commit_age_seconds(directory: &Path) -> i64 {
+    let out = std::process::Command::new("git")
+        .args(["log", "-1", "--format=%ct"])
+        .current_dir(directory)
+        .output();
+    let Ok(out) = out else { return i64::MAX };
+    let ts: i64 = String::from_utf8_lossy(&out.stdout).trim().parse().unwrap_or(0);
+    if ts == 0 { return i64::MAX }
+    chrono::Utc::now().timestamp() - ts
+}
+

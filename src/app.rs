@@ -64,29 +64,29 @@ pub async fn run_daemon() -> Result<()> {
             if typo_store.is_silenced(now).unwrap_or(false) {
                 continue;
             }
-            let Ok(Some(behavior)) = detector::detect_typo_repeater(&typo_config, None) else {
-                continue;
-            };
-            let since = now - typo_config.limits.cooldown_seconds;
-            let already_noted = typo_store
-                .recent_note_exists(behavior.trigger_name(), since)
-                .unwrap_or(true);
-            if already_noted {
-                continue;
+            let candidates = [
+                detector::detect_typo_repeater(&typo_config, None),
+                detector::detect_alias_candidate(&typo_config, None),
+            ];
+            for result in candidates {
+                let Ok(Some(behavior)) = result else { continue };
+                let since = now - typo_config.limits.cooldown_seconds;
+                let already_noted = typo_store
+                    .recent_note_exists(behavior.trigger_name(), since)
+                    .unwrap_or(true);
+                if already_noted { continue; }
+                let current = typo_store.get_mood().unwrap_or(MoodState::Calm);
+                let mood = update_mood(current, &behavior);
+                if typo_store.set_mood(mood).is_err() { continue; }
+                let note = match generate_note(&typo_config, mood, &behavior).await {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                };
+                let alias_note = maybe_inject_alias(&typo_config, &behavior).ok().flatten();
+                let final_note = alias_note.unwrap_or(note);
+                let directory = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+                let _ = drop_note(&directory, &final_note, ascii_for_mood(&mood), &typo_store, &behavior, now).await;
             }
-            let current = typo_store.get_mood().unwrap_or(MoodState::Calm);
-            let mood = update_mood(current, &behavior);
-            if typo_store.set_mood(mood).is_err() {
-                continue;
-            }
-            let note = match generate_note(&typo_config, mood, &behavior).await {
-                Ok(n) => n,
-                Err(_) => continue,
-            };
-            let alias_note = maybe_inject_alias(&typo_config, &behavior).ok().flatten();
-            let final_note = alias_note.unwrap_or(note);
-            let directory = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-            let _ = drop_note(&directory, &final_note, ascii_for_mood(&mood), &typo_store, &behavior, now).await;
         }
     });
 

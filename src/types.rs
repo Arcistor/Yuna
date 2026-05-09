@@ -105,6 +105,56 @@ pub enum Behavior {
         command: String,
         count: u32,
     },
+    Hoarder {
+        directory: PathBuf,
+        filename: String,
+        modify_count: u32,
+    },
+    Archaeologist {
+        directory: PathBuf,
+        filename: String,
+        months_dormant: u32,
+    },
+    EmptyNest {
+        directory: PathBuf,
+        days_empty: u32,
+    },
+    Duplicator {
+        directory: PathBuf,
+        base_name: String,
+        count: u32,
+    },
+    GhostCommit {
+        directory: PathBuf,
+        days_uncommitted: u32,
+    },
+    RevertSpiral {
+        directory: PathBuf,
+        filename: String,
+        revert_count: u32,
+    },
+    AliasCandidate {
+        command: String,
+        count: u32,
+    },
+    NightOwl {
+        directory: PathBuf,
+        hour: u32,
+    },
+    WeekendWarrior {
+        directory: PathBuf,
+        hours: f32,
+    },
+    DeadlineMode {
+        directory: PathBuf,
+        multiplier: f32,
+    },
+    Ghosted {
+        days_absent: u32,
+    },
+    FreshStart {
+        days_absent: u32,
+    },
 }
 
 impl Behavior {
@@ -114,6 +164,18 @@ impl Behavior {
             Self::Procrastinator { .. } => "procrastinator",
             Self::Cleaning { .. } => "cleaning",
             Self::TypoRepeater { .. } => "typo_repeater",
+            Self::Hoarder { .. } => "hoarder",
+            Self::Archaeologist { .. } => "archaeologist",
+            Self::EmptyNest { .. } => "empty_nest",
+            Self::Duplicator { .. } => "duplicator",
+            Self::GhostCommit { .. } => "ghost_commit",
+            Self::RevertSpiral { .. } => "revert_spiral",
+            Self::AliasCandidate { .. } => "alias_candidate",
+            Self::NightOwl { .. } => "night_owl",
+            Self::WeekendWarrior { .. } => "weekend_warrior",
+            Self::DeadlineMode { .. } => "deadline_mode",
+            Self::Ghosted { .. } => "ghosted",
+            Self::FreshStart { .. } => "fresh_start",
         }
     }
 
@@ -121,8 +183,20 @@ impl Behavior {
         match self {
             Self::MidnightWorker { directory, .. }
             | Self::Procrastinator { directory, .. }
-            | Self::Cleaning { directory, .. } => Some(directory),
-            Self::TypoRepeater { .. } => None,
+            | Self::Cleaning { directory, .. }
+            | Self::EmptyNest { directory, .. }
+            | Self::GhostCommit { directory, .. }
+            | Self::NightOwl { directory, .. }
+            | Self::WeekendWarrior { directory, .. }
+            | Self::DeadlineMode { directory, .. }
+            | Self::Duplicator { directory, .. }
+            | Self::Hoarder { directory, .. }
+            | Self::Archaeologist { directory, .. }
+            | Self::RevertSpiral { directory, .. } => Some(directory),
+            Self::TypoRepeater { .. }
+            | Self::AliasCandidate { .. }
+            | Self::Ghosted { .. }
+            | Self::FreshStart { .. } => None,
         }
     }
 
@@ -131,10 +205,7 @@ impl Behavior {
             Self::MidnightWorker { hours, .. } => {
                 format!("the user has been editing code for {hours:.1} hours after midnight")
             }
-            Self::Procrastinator {
-                directory,
-                days_idle,
-            } => format!(
+            Self::Procrastinator { directory, days_idle } => format!(
                 "the project folder '{}' has sat untouched for {days_idle} days",
                 directory.display()
             ),
@@ -144,6 +215,45 @@ impl Behavior {
             Self::TypoRepeater { command, count } => {
                 format!("the user typed '{command}' incorrectly {count} times")
             }
+            Self::Hoarder { filename, modify_count, .. } => format!(
+                "the user modified '{filename}' {modify_count} times today without committing"
+            ),
+            Self::Archaeologist { filename, months_dormant, .. } => format!(
+                "the user opened '{filename}' which had not been touched in {months_dormant} months"
+            ),
+            Self::EmptyNest { directory, days_empty } => format!(
+                "the folder '{}' has been empty for {days_empty} days",
+                directory.display()
+            ),
+            Self::Duplicator { directory, base_name, count } => format!(
+                "the user has {count} near-duplicate files named like '{base_name}' in '{}'",
+                directory.display()
+            ),
+            Self::GhostCommit { directory, days_uncommitted } => format!(
+                "files in '{}' have been modified for {days_uncommitted} days with no git commit",
+                directory.display()
+            ),
+            Self::RevertSpiral { filename, revert_count, .. } => format!(
+                "the user has reverted '{filename}' {revert_count} times in the last hour"
+            ),
+            Self::AliasCandidate { command, count } => format!(
+                "the user typed '{command}' {count} times — they should make an alias"
+            ),
+            Self::NightOwl { hour, .. } => format!(
+                "the user is still working at {hour}:00 in the morning"
+            ),
+            Self::WeekendWarrior { hours, .. } => format!(
+                "the user has been coding for {hours:.1} hours on a weekend"
+            ),
+            Self::DeadlineMode { multiplier, .. } => format!(
+                "file activity is {multiplier:.1}x higher than the weekly average — crunch detected"
+            ),
+            Self::Ghosted { days_absent } => format!(
+                "the user has been absent for {days_absent} days"
+            ),
+            Self::FreshStart { days_absent } => format!(
+                "the user returned after {days_absent} days away"
+            ),
         }
     }
 }
