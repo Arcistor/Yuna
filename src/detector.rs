@@ -26,15 +26,27 @@ pub fn detect_cleaning(store: &Store, config: &Config, now: i64) -> Result<Optio
     if in_cooldown(store, config, "cleaning", now)? {
         return Ok(None);
     }
-    let events = store.query_events(now - 600, Some(EventKind::Delete))?;
+    let delete_events = store.query_events(now - 600, Some(EventKind::Delete))?;
+    let rename_events = store.query_events(now - 600, Some(EventKind::Rename))?;
     let mut counts: HashMap<PathBuf, u32> = HashMap::new();
-    for event in events {
+    for event in delete_events {
         let directory = event
             .path
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or(event.path);
         *counts.entry(directory).or_default() += 1;
+    }
+    let mut seen_renames: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+    for event in rename_events {
+        if !event.path.exists() && seen_renames.insert(event.path.clone()) {
+            let directory = event
+                .path
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or(event.path);
+            *counts.entry(directory).or_default() += 1;
+        }
     }
 
     Ok(counts

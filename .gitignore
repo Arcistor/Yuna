@@ -2,3 +2,4 @@
 .ghostconfig
 .DS_Store
 Cargo.lock
+/files/

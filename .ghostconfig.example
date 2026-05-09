@@ -16,4 +16,4 @@ note_lifetime_minutes = 60
 
 [limits]
 max_cpu_percent = 0.5
-cooldown_seconds = 86400
+cooldown_seconds = 60

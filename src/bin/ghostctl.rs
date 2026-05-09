@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::{Local, TimeZone};
 use clap::{Parser, Subcommand};
 use digital_ghost::app::{
     daemon_status, open_default_store, start_daemon_process, stop_daemon_process, DaemonState,
@@ -19,6 +20,10 @@ enum Command {
     Notes,
     Mood,
     Silence { duration: String },
+    Log {
+        #[arg(short, long, default_value_t = 30)]
+        lines: usize,
+    },
 }
 
 fn main() -> Result<()> {
@@ -69,9 +74,37 @@ fn main() -> Result<()> {
             store.set_silenced_until(until)?;
             println!("silenced_until: {until}");
         }
+        Command::Log { lines } => {
+            let events = store.recent_events(lines)?;
+            if events.is_empty() {
+                println!("no events recorded");
+                return Ok(());
+            }
+            for event in events {
+                let time = Local
+                    .timestamp_opt(event.timestamp, 0)
+                    .single()
+                    .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
+                    .unwrap_or_else(|| event.timestamp.to_string());
+                let label = format_event_label(event.kind.as_str(), &event.path);
+                let path = event.path.display();
+                println!("[{time}] {label:<18} {path}");
+            }
+        }
     }
 
     Ok(())
+}
+
+fn format_event_label(kind: &str, path: &std::path::Path) -> String {
+    match kind {
+        "rename" if !path.exists() => "RENAME (trashed)".to_string(),
+        "rename" => "RENAME".to_string(),
+        "delete" => "DELETE".to_string(),
+        "create" => "CREATE".to_string(),
+        "modify" => "MODIFY".to_string(),
+        other => other.to_uppercase(),
+    }
 }
 
 fn parse_duration_seconds(value: &str) -> Result<i64> {

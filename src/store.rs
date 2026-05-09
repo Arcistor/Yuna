@@ -176,6 +176,20 @@ impl Store {
         Ok(count > 0)
     }
 
+    pub fn recent_events(&self, limit: usize) -> Result<Vec<EventRecord>> {
+        let conn = self.connect()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, path, kind, timestamp FROM events
+             ORDER BY timestamp DESC LIMIT ?1",
+        )?;
+        let rows = stmt.query_map(rusqlite::params![limit as i64], map_event)?;
+        let mut events = Vec::new();
+        for row in rows {
+            events.push(row?);
+        }
+        Ok(events)
+    }
+
     pub fn last_event_time(&self) -> Result<Option<i64>> {
         Ok(self.connect()?
             .query_row("SELECT MAX(timestamp) FROM events", [], |row| row.get(0))?)
