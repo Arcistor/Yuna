@@ -1,0 +1,16 @@
+[ghost]
+personality = "lonely_ghost"
+ollama_model = "mistral:7b-instruct-v0.3-q4_K_M"
+ollama_url = "http://localhost:11434"
+
+[watch]
+paths = ["/Users/you/projects"]
+exclude = ["/Users/you/projects/node_modules", "/Users/you/projects/.git"]
+
+[behavior]
+alias_injection = false
+note_lifetime_minutes = 60
+
+[limits]
+max_cpu_percent = 0.5
+cooldown_hours = 24
