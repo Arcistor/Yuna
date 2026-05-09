@@ -20,6 +20,19 @@ pub async fn drop_note(
     tokio::fs::create_dir_all(directory)
         .await
         .with_context(|| format!("create note directory {}", directory.display()))?;
+
+    let existing = store.list_undeleted_notes()?;
+    let mut dir_notes: Vec<_> = existing.iter()
+        .filter(|n| !n.deleted && n.path.parent() == Some(directory))
+        .collect();
+    if dir_notes.len() >= 3 {
+        dir_notes.sort_by_key(|n| n.created);
+        for old in &dir_notes[..dir_notes.len() - 2] {
+            tokio::fs::remove_file(&old.path).await.ok();
+            store.mark_note_deleted(old.id)?;
+        }
+    }
+
     let path = choose_note_path(directory);
     let note = format!("{ascii}\n\n{content}\n\n                              - still watching\n");
     tokio::fs::write(&path, note)
@@ -50,6 +63,9 @@ pub async fn reap_notes(store: &Store, config: &Config, now: i64) -> Result<()> 
                 tokio::fs::remove_file(&note.path).await.ok();
                 store.mark_note_deleted(note.id)?;
             }
+        } else if now - note.created >= lifetime * 2 {
+            tokio::fs::remove_file(&note.path).await.ok();
+            store.mark_note_deleted(note.id)?;
         }
     }
     Ok(())
