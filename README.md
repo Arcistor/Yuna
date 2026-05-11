@@ -27,7 +27,21 @@ This produces:
 - `target/release/yuna`
 - `target/release/yunactl`
 
-## Configure
+## Quick Setup
+
+To install the binaries to your local path and setup the `yuna` alias automatically, run our setup script:
+
+```bash
+chmod +x scripts/setup_binaries.sh
+./scripts/setup_binaries.sh
+source ~/.zshrc
+```
+
+This will:
+1. Copy binaries to `~/.local/bin/`
+2. Add `alias yuna='yunactl'` to your `.zshrc`
+
+Now you can use the `yuna` command directly!
 
 Copy `.yunaconfig.example` to either your current working directory or your home directory:
 
@@ -61,28 +75,41 @@ cooldown_seconds = 60
 Start the daemon:
 
 ```bash
-target/release/yunactl start
+yuna start
 ```
 
 Check status:
 
 ```bash
-target/release/yunactl status
+yuna status
 ```
 
 Stop it:
 
 ```bash
-target/release/yunactl stop
+yuna stop
 ```
 
 Other commands:
 
 ```bash
-target/release/yunactl notes
-target/release/yunactl mood
-target/release/yunactl log
-target/release/yunactl silence 2h
+# List only unread notes
+yuna notes
+
+# List all notes (including read ones)
+yuna notes --all
+
+# List only notes you've already read
+yuna notes --read
+
+# Check Yuna's current mood
+yuna mood
+
+# View recent filesystem events
+yuna log
+
+# Silence Yuna for a specific time
+yuna silence 2h
 ```
 
 ## Personalities
@@ -108,7 +135,7 @@ alias gti='git'
 
 ## Notes
 
-Notes are dropped into the triggering directory, usually as `.yuna_note`, with ASCII mood art and a short message.
+Notes are dropped into the triggering directory, usually with a `.yuna` extension (e.g., `note.yuna`), with ASCII mood art and a short message.
 
 ## Data Location
 

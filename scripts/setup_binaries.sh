@@ -22,12 +22,12 @@ cp "$PROJECT_DIR/target/release/yunactl" "$BIN_DEST/yunactl"
 chmod +x "$BIN_DEST/yuna" "$BIN_DEST/yunactl"
 
 # 4. Add Alias to .zshrc
-echo "🔗 Adding alias 'yn' to ~/.zshrc..."
-if ! grep -q "alias yn=" ~/.zshrc; then
-    echo -e "\n# Yuna Alias\nalias yn='yunactl'" >> ~/.zshrc
-    echo "✅ Alias 'yn' added."
+echo "🔗 Adding alias 'yuna' to ~/.zshrc..."
+if ! grep -q "alias yuna=" ~/.zshrc; then
+    echo -e "\n# Yuna Alias\nalias yuna='yunactl'" >> ~/.zshrc
+    echo "✅ Alias 'yuna' added."
 else
-    echo "ℹ️ Alias 'yn' already exists in .zshrc."
+    echo "ℹ️ Alias 'yuna' already exists in .zshrc."
 fi
 
 echo "✨ Setup complete! Please run 'source ~/.zshrc' or restart your terminal."

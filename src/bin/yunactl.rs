@@ -14,13 +14,31 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Start the Yuna daemon
     Start,
+    /// Stop the Yuna daemon
     Stop,
+    /// Show current status, mood, and unread note count
     Status,
-    Notes,
+    /// List notes dropped by Yuna
+    Notes {
+        /// Show all notes including those already read
+        #[arg(short, long)]
+        all: bool,
+        /// Show only notes that have been read
+        #[arg(short, long)]
+        read: bool,
+    },
+    /// Show Yuna's current emotional state
     Mood,
-    Silence { duration: String },
+    /// Silence Yuna for a specific duration (e.g., 2h, 30m, 1d)
+    Silence { 
+        /// Duration of silence (e.g., 1h, 30m)
+        duration: String 
+    },
+    /// Show recent filesystem events recorded by Yuna
     Log {
+        /// Number of recent events to show
         #[arg(short, long, default_value_t = 30)]
         lines: usize,
     },
@@ -46,7 +64,11 @@ fn main() -> Result<()> {
                 .last_event_time()?
                 .map(|time| time.to_string())
                 .unwrap_or_else(|| "never".to_string());
-            let note_count = store.list_undeleted_notes()?.len();
+            let note_count = store
+                .list_undeleted_notes()?
+                .into_iter()
+                .filter(|n| n.read_at.is_none())
+                .count();
             println!("running: {}", matches!(daemon.state, DaemonState::Running));
             if let Some(pid) = daemon.pid {
                 println!("pid: {pid}");
@@ -58,10 +80,20 @@ fn main() -> Result<()> {
             println!("last_event: {last_event}");
             println!("unread_notes: {note_count}");
         }
-        Command::Notes => {
+        Command::Notes { all, read } => {
             for note in store.list_undeleted_notes()? {
-                if note.read_at.is_none() {
-                    println!("{}", note.path.display());
+                if all {
+                    let status = if note.read_at.is_some() { "[READ]" } else { "[NEW]" };
+                    println!("{:<6} {}", status, note.path.display());
+                } else if read {
+                    if note.read_at.is_some() {
+                        println!("{}", note.path.display());
+                    }
+                } else {
+                    // Default: unread only
+                    if note.read_at.is_none() {
+                        println!("{}", note.path.display());
+                    }
                 }
             }
         }
