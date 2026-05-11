@@ -124,7 +124,7 @@ pub enum Behavior {
         base_name: String,
         count: u32,
     },
-    GhostCommit {
+    YunaCommit {
         directory: PathBuf,
         days_uncommitted: u32,
     },
@@ -149,7 +149,7 @@ pub enum Behavior {
         directory: PathBuf,
         multiplier: f32,
     },
-    Ghosted {
+    YunaMissing {
         days_absent: u32,
     },
     FreshStart {
@@ -168,13 +168,13 @@ impl Behavior {
             Self::Archaeologist { .. } => "archaeologist",
             Self::EmptyNest { .. } => "empty_nest",
             Self::Duplicator { .. } => "duplicator",
-            Self::GhostCommit { .. } => "ghost_commit",
+            Self::YunaCommit { .. } => "yuna_commit",
             Self::RevertSpiral { .. } => "revert_spiral",
             Self::AliasCandidate { .. } => "alias_candidate",
             Self::NightOwl { .. } => "night_owl",
             Self::WeekendWarrior { .. } => "weekend_warrior",
             Self::DeadlineMode { .. } => "deadline_mode",
-            Self::Ghosted { .. } => "ghosted",
+            Self::YunaMissing { .. } => "yuna_missing",
             Self::FreshStart { .. } => "fresh_start",
         }
     }
@@ -185,7 +185,7 @@ impl Behavior {
             | Self::Procrastinator { directory, .. }
             | Self::Cleaning { directory, .. }
             | Self::EmptyNest { directory, .. }
-            | Self::GhostCommit { directory, .. }
+            | Self::YunaCommit { directory, .. }
             | Self::NightOwl { directory, .. }
             | Self::WeekendWarrior { directory, .. }
             | Self::DeadlineMode { directory, .. }
@@ -195,7 +195,7 @@ impl Behavior {
             | Self::RevertSpiral { directory, .. } => Some(directory),
             Self::TypoRepeater { .. }
             | Self::AliasCandidate { .. }
-            | Self::Ghosted { .. }
+            | Self::YunaMissing { .. }
             | Self::FreshStart { .. } => None,
         }
     }
@@ -229,7 +229,7 @@ impl Behavior {
                 "the user has {count} near-duplicate files named like '{base_name}' in '{}'",
                 directory.display()
             ),
-            Self::GhostCommit { directory, days_uncommitted } => format!(
+            Self::YunaCommit { directory, days_uncommitted } => format!(
                 "files in '{}' have been modified for {days_uncommitted} days with no git commit",
                 directory.display()
             ),
@@ -248,7 +248,7 @@ impl Behavior {
             Self::DeadlineMode { multiplier, .. } => format!(
                 "file activity is {multiplier:.1}x higher than the weekly average — crunch detected"
             ),
-            Self::Ghosted { days_absent } => format!(
+            Self::YunaMissing { days_absent } => format!(
                 "the user has been absent for {days_absent} days"
             ),
             Self::FreshStart { days_absent } => format!(
@@ -277,7 +277,7 @@ pub struct NoteRecord {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GhostEvent {
+pub struct YunaEvent {
     pub path: PathBuf,
     pub kind: EventKind,
     pub timestamp: i64,

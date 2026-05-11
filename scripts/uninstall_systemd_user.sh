@@ -6,14 +6,14 @@ if [[ "$(uname -s)" != "Linux" ]]; then
   exit 1
 fi
 
-UNIT_PATH="${HOME}/.config/systemd/user/digital-ghost.service"
+UNIT_PATH="${HOME}/.config/systemd/user/yuna.service"
 
-systemctl --user disable --now digital-ghost.service >/dev/null 2>&1 || true
+systemctl --user disable --now yuna.service >/dev/null 2>&1 || true
 rm -f "$UNIT_PATH"
 systemctl --user daemon-reload
 
-echo "Removed Digital Ghost systemd user service: $UNIT_PATH"
+echo "Removed Yuna systemd user service: $UNIT_PATH"
 echo "Binaries and local data were left in place:"
-echo "  ${HOME}/.local/bin/ghost"
-echo "  ${HOME}/.local/bin/ghostctl"
-echo "  ${HOME}/.ghost"
+echo "  ${HOME}/.local/bin/yuna"
+echo "  ${HOME}/.local/bin/yunactl"
+echo "  ${HOME}/.yuna"

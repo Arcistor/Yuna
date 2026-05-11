@@ -8,14 +8,14 @@ use notify::{
 use tokio::sync::mpsc;
 
 use crate::config::Config;
-use crate::types::{EventKind, GhostEvent};
+use crate::types::{EventKind, YunaEvent};
 
 pub struct FsWatcher {
     _watcher: RecommendedWatcher,
 }
 
 impl FsWatcher {
-    pub fn start(config: &Config, sender: mpsc::Sender<GhostEvent>) -> Result<Self> {
+    pub fn start(config: &Config, sender: mpsc::Sender<YunaEvent>) -> Result<Self> {
         let excludes = config.effective_excludes();
         let mut watcher = RecommendedWatcher::new(
             move |result: notify::Result<Event>| {
@@ -30,7 +30,7 @@ impl FsWatcher {
                     if is_excluded(&path, &excludes) {
                         continue;
                     }
-                    let _ = sender.blocking_send(GhostEvent {
+                    let _ = sender.blocking_send(YunaEvent {
                         path,
                         kind,
                         timestamp: now,
@@ -67,13 +67,13 @@ fn is_excluded(path: &Path, excludes: &[PathBuf]) -> bool {
     }
 
     if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
-        let ghost_patterns = [
-            ".ghost_note",
-            "MESSAGE_FROM_THE_VOID.txt",
-            ".thankyou",
-            "DO_NOT_READ_ME.txt",
+        let yuna_patterns = [
+            "note.yuna",
+            "message.yuna",
+            "arigato.yuna",
+            "haunted.yuna",
         ];
-        return ghost_patterns.iter().any(|p| filename.starts_with(p));
+        return yuna_patterns.iter().any(|p| filename.starts_with(p));
     }
 
     false

@@ -1,10 +1,10 @@
-[ghost]
-personality = "lonely_ghost"
+[yuna]
+personality = "yuna"
 ollama_model = "mistral:7b-instruct-v0.3-q4_K_M"
 ollama_url = "http://localhost:11434"
 
 [watch]
-# Watch directories you own. Digital Ghost also applies built-in safety excludes
+# Watch directories you own. Yuna also applies built-in safety excludes
 # for system paths such as /proc, /sys, /dev, /etc, /System, and /Library.
 paths = ["/Users/you/projects"]
 exclude = ["/Users/you/projects/node_modules", "/Users/you/projects/.git"]

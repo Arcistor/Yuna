@@ -16,7 +16,7 @@ impl AliasSuggestion {
 
     pub fn note(&self) -> String {
         format!(
-            "I taught your shell a small mercy: `{}` now means `{}`. Try to look surprised.",
+            "Yuna rearranged your memories: `{}` now means `{}`. Don't forget again.",
             self.alias, self.target
         )
     }
@@ -67,7 +67,7 @@ pub fn inject_alias(rc_file: &Path, suggestion: &AliasSuggestion) -> Result<bool
     if !next.is_empty() && !next.ends_with('\n') {
         next.push('\n');
     }
-    next.push_str("# Added by Digital Ghost\n");
+    next.push_str("# Added by Yuna\n");
     next.push_str(&alias_line);
     next.push('\n');
     fs::write(rc_file, next).with_context(|| format!("write rc file {}", rc_file.display()))?;

@@ -1,12 +1,12 @@
-# Contributing To Digital Ghost
+# Contributing To Yuna
 
-Thanks for helping with Digital Ghost. The project is meant to stay small, local-first, private, and atmospheric. Changes should preserve that feeling: no cloud services, no dashboards, no telemetry, and no surprise edits to user files.
+Thanks for helping with Yuna. The project is meant to stay small, local-first, private, and atmospheric. Changes should preserve that feeling: no cloud services, no dashboards, no telemetry, and no surprise edits to user files.
 
 ## Project Shape
 
-- `src/bin/ghost.rs`: daemon entry point
-- `src/bin/ghostctl.rs`: CLI entry point
-- `src/config.rs`: `.ghostconfig` loading and safety excludes
+- `src/bin/yuna.rs`: daemon entry point
+- `src/bin/yunactl.rs`: CLI entry point
+- `src/config.rs`: `.yunaconfig` loading and safety excludes
 - `src/store.rs`: SQLite schema and persistence
 - `src/watcher.rs`: event-based filesystem watching
 - `src/detector.rs`: behavior detectors
@@ -27,7 +27,7 @@ cargo build
 cargo test
 ```
 
-For generated notes through a model, run Ollama locally and set `ghost.ollama_url` in `.ghostconfig`. Tests and the smoke test do not require Ollama; they verify the fallback note path too.
+For generated notes through a model, run Ollama locally and set `yuna.ollama_url` in `.yunaconfig`. Tests and the smoke test do not require Ollama; they verify the fallback note path too.
 
 ## Verification Before Submitting
 
@@ -41,7 +41,7 @@ cargo build --release
 scripts/smoke_test.sh
 ```
 
-The smoke test creates a temporary home/config/watch directory, starts `ghost` through `ghostctl start`, triggers cleanup behavior, checks that a note appears, prints `ghostctl status`, and stops the daemon. It should not touch your real `~/.ghost` data.
+The smoke test creates a temporary home/config/watch directory, starts `yuna` through `yunactl start`, triggers cleanup behavior, checks that a note appears, prints `yunactl status`, and stops the daemon. It should not touch your real `~/.yuna` data.
 
 ## Coding Guidelines
 
@@ -56,7 +56,7 @@ The smoke test creates a temporary home/config/watch directory, starts `ghost` t
 
 ## Safety Rules
 
-Digital Ghost observes user files, so changes need a little extra care.
+Yuna observes user files, so changes need a little extra care.
 
 - Watch paths should be user-owned directories.
 - System directories must remain excluded by default.
@@ -106,14 +106,14 @@ cargo test --test installer
 
 ## Config And Data
 
-The daemon loads `.ghostconfig` from the current directory first, then `~/.ghostconfig`.
+The daemon loads `.yunaconfig` from the current directory first, then `~/.yunaconfig`.
 
 Local state lives under:
 
 ```text
-~/.ghost/ghost.db
-~/.ghost/ghost.pid
-~/.ghost/profiles/
+~/.yuna/yuna.db
+~/.yuna/yuna.pid
+~/.yuna/profiles/
 ```
 
 Avoid tests that depend on the real home directory. Prefer `tempfile` in Rust tests and temp `HOME` directories in shell scripts.
@@ -124,7 +124,7 @@ Avoid tests that depend on the real home directory. Prefer `tempfile` in Rust te
 - Tests cover new behavior or changed behavior.
 - `cargo fmt --check`, `cargo test`, `cargo clippy --all-targets -- -D warnings`, and `scripts/smoke_test.sh` pass.
 - User-file mutations are opt-in, idempotent, and documented.
-- README or `.ghostconfig.example` is updated when user-facing behavior changes.
+- README or `.yunaconfig.example` is updated when user-facing behavior changes.
 
 ## Release Notes
 

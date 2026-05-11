@@ -49,7 +49,7 @@ pub async fn run_daemon() -> Result<()> {
             interval.tick().await;
             let now = chrono::Utc::now().timestamp();
             if let Err(error) = reap_notes(&reaper_store, &reaper_config, now).await {
-                eprintln!("ghost reaper error: {error:#}");
+                eprintln!("yuna reaper error: {error:#}");
             }
         }
     });
@@ -143,15 +143,15 @@ fn maybe_inject_alias(config: &Config, behavior: &Behavior) -> Result<Option<Str
 pub fn default_db_path() -> Result<PathBuf> {
     Ok(dirs::home_dir()
         .context("locate home directory")?
-        .join(".ghost")
-        .join("ghost.db"))
+        .join(".yuna")
+        .join("yuna.db"))
 }
 
 pub fn default_pid_path() -> Result<PathBuf> {
     Ok(dirs::home_dir()
         .context("locate home directory")?
-        .join(".ghost")
-        .join("ghost.pid"))
+        .join(".yuna")
+        .join("yuna.pid"))
 }
 
 pub fn write_pid_file(path: &Path, pid: u32) -> Result<()> {
@@ -226,22 +226,22 @@ pub fn start_daemon_process() -> Result<u32> {
         return status.pid.context("running daemon missing pid");
     }
 
-    let ghost_path = current_ghost_binary_path()?;
+    let yuna_path = current_yuna_binary_path()?;
     let log_path = dirs::home_dir()
         .context("locate home directory")?
-        .join(".ghost")
-        .join("ghost.log");
+        .join(".yuna")
+        .join("yuna.log");
     let log_file = fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(&log_path)
         .with_context(|| format!("open log file {}", log_path.display()))?;
-    let child = Command::new(&ghost_path)
+    let child = Command::new(&yuna_path)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(log_file)
         .spawn()
-        .with_context(|| format!("start daemon {}", ghost_path.display()))?;
+        .with_context(|| format!("start daemon {}", yuna_path.display()))?;
     Ok(child.id())
 }
 
@@ -259,26 +259,26 @@ pub fn stop_daemon_process() -> Result<Option<u32>> {
     Ok(Some(pid))
 }
 
-fn current_ghost_binary_path() -> Result<PathBuf> {
+fn current_yuna_binary_path() -> Result<PathBuf> {
     let current = std::env::current_exe().context("locate current executable")?;
     let Some(directory) = current.parent() else {
         return Err(anyhow!("current executable has no parent directory"));
     };
-    let candidate = directory.join("ghost");
+    let candidate = directory.join("yuna");
     if candidate.exists() {
         return Ok(candidate);
     }
 
     #[cfg(windows)]
     {
-        let candidate = directory.join("ghost.exe");
+        let candidate = directory.join("yuna.exe");
         if candidate.exists() {
             return Ok(candidate);
         }
     }
 
     Err(anyhow!(
-        "could not find ghost binary next to {}",
+        "could not find yuna binary next to {}",
         current.display()
     ))
 }

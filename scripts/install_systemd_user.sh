@@ -9,24 +9,24 @@ fi
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${HOME}/.local/bin"
 UNIT_DIR="${HOME}/.config/systemd/user"
-UNIT_PATH="${UNIT_DIR}/digital-ghost.service"
+UNIT_PATH="${UNIT_DIR}/yuna.service"
 
-mkdir -p "$BIN_DIR" "$UNIT_DIR" "${HOME}/.ghost"
+mkdir -p "$BIN_DIR" "$UNIT_DIR" "${HOME}/.yuna"
 
 echo "Building release binaries..."
 cargo build --manifest-path "$ROOT_DIR/Cargo.toml" --release --bins
 
-cp "$ROOT_DIR/target/release/ghost" "$BIN_DIR/ghost"
-cp "$ROOT_DIR/target/release/ghostctl" "$BIN_DIR/ghostctl"
+cp "$ROOT_DIR/target/release/yuna" "$BIN_DIR/yuna"
+cp "$ROOT_DIR/target/release/yunactl" "$BIN_DIR/yunactl"
 
 cat > "$UNIT_PATH" <<EOF_UNIT
 [Unit]
-Description=Digital Ghost
+Description=Yuna
 After=default.target
 
 [Service]
 Type=simple
-ExecStart=${BIN_DIR}/ghost
+ExecStart=${BIN_DIR}/yuna
 WorkingDirectory=${HOME}
 Environment=HOME=${HOME}
 Restart=on-failure
@@ -37,8 +37,8 @@ WantedBy=default.target
 EOF_UNIT
 
 systemctl --user daemon-reload
-systemctl --user enable --now digital-ghost.service
+systemctl --user enable --now yuna.service
 
-echo "Installed Digital Ghost systemd user service: $UNIT_PATH"
+echo "Installed Yuna systemd user service: $UNIT_PATH"
 echo "Binaries installed to: $BIN_DIR"
-echo "Check status with: systemctl --user status digital-ghost.service"
+echo "Check status with: systemctl --user status yuna.service"

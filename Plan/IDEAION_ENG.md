@@ -1,14 +1,14 @@
-# Project: "Digital Ghost in the Machine"
+# Project: "Yuna in the Machine"
 
-The "Digital Ghost in the Machine" project transforms a computer from a "machine" into a "living being" that lives alongside us. The core idea is to make the user feel like there is a "presence" observing and genuinely caring for them.
+The "Yuna in the Machine" project transforms a computer from a "machine" into a "living being" that lives alongside us. The core idea is to make the user feel like there is a "presence" observing and genuinely caring for them.
 
 Here are the in-depth details for further development:
 
 ## 1. The Mechanics
 To make this spirit feel "real," you need three main components:
 *   **The Eye (Observer):** Use a library like `watchdog` (Python) or `fswatch` (C++/Rust) to monitor file system changes, such as creating new files, editing code at 3 AM, or deleting large numbers of files.
-*   **The Soul (AI Engine):** Use a Local LLM (via Ollama) to save resources and maintain privacy. Set a System Prompt with a specific personality (e.g., a lonely ghost, an organized maid, or a deceased veteran programmer).
-*   **The Haunting (Interaction):** The most subtle way to "manifest" is by dropping `.ghost_note` or `MESSAGE_FROM_THE_VOID.txt` files into the directory where you just finished working.
+*   **The Soul (AI Engine):** Use a Local LLM (via Ollama) to save resources and maintain privacy. Set a System Prompt with a specific personality (e.g., a lonely yuna, an organized maid, or a deceased veteran programmer).
+*   **The Haunting (Interaction):** The most subtle way to "manifest" is by dropping `.yuna_note` or `MESSAGE_FROM_YUNA.txt` files into the directory where you just finished working.
 
 ## 2. Ghost Scenarios
 The spirit responds based on your behavior:
@@ -21,7 +21,7 @@ To be a proper "spirit," this program should be lightweight and run well in the 
 *   **Language:** Rust (highly recommended for excellent memory management and stable background service) or Go.
 *   **AI:** Ollama (running `mistral` or `tinyllama` for speed).
 *   **Database:** SQLite (to store short behavioral history so the AI remembers "what you did yesterday").
-*   **Configuration:** Create a `.ghostconfig` file to define the boundaries (Paths) where the spirit can haunt (to avoid interfering with system folders).
+*   **Configuration:** Create a `.yunaconfig` file to define the boundaries (Paths) where the spirit can haunt (to avoid interfering with system folders).
 
 ## 4. Easter Eggs
 *   **Self-Deleting Notes:** Notes written by the spirit delete themselves within 1 hour after you read them (using `atime` for checking) to maintain mystery.

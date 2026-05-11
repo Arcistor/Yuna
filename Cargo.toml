@@ -1,19 +1,19 @@
 [package]
-name = "digital-ghost"
+name = "yuna"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "digital_ghost"
+name = "yuna"
 path = "src/lib.rs"
 
 [[bin]]
-name = "ghost"
-path = "src/bin/ghost.rs"
+name = "yuna"
+path = "src/bin/yuna.rs"
 
 [[bin]]
-name = "ghostctl"
-path = "src/bin/ghostctl.rs"
+name = "yunactl"
+path = "src/bin/yunactl.rs"
 
 [dependencies]
 anyhow = "1"

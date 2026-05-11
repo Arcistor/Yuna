@@ -74,15 +74,15 @@ pub async fn reap_notes(store: &Store, config: &Config, now: i64) -> Result<()> 
 fn choose_note_path(directory: &Path) -> PathBuf {
     let mut rng = rand::thread_rng();
     let names = [
-        ".ghost_note",
-        "MESSAGE_FROM_THE_VOID.txt",
-        ".thankyou",
-        "DO_NOT_READ_ME.txt",
+        "note.yuna",
+        "message.yuna",
+        "arigato.yuna",
+        "haunted.yuna",
     ];
     let name = if rand::random::<f32>() < 0.7 {
-        ".ghost_note"
+        "note.yuna"
     } else {
-        names.choose(&mut rng).copied().unwrap_or(".ghost_note")
+        names.choose(&mut rng).copied().unwrap_or("note.yuna")
     };
     let mut path = directory.join(name);
     if !path.exists() {

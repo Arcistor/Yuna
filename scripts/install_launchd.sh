@@ -8,18 +8,18 @@ fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN_DIR="${HOME}/.local/bin"
-GHOST_DIR="${HOME}/.ghost"
+YUNA_DIR="${HOME}/.yuna"
 PLIST_DIR="${HOME}/Library/LaunchAgents"
-LABEL="com.digital-ghost.daemon"
+LABEL="com.yuna.daemon"
 PLIST_PATH="${PLIST_DIR}/${LABEL}.plist"
 
-mkdir -p "$BIN_DIR" "$GHOST_DIR" "$PLIST_DIR"
+mkdir -p "$BIN_DIR" "$YUNA_DIR" "$PLIST_DIR"
 
 echo "Building release binaries..."
 cargo build --manifest-path "$ROOT_DIR/Cargo.toml" --release --bins
 
-cp "$ROOT_DIR/target/release/ghost" "$BIN_DIR/ghost"
-cp "$ROOT_DIR/target/release/ghostctl" "$BIN_DIR/ghostctl"
+cp "$ROOT_DIR/target/release/yuna" "$BIN_DIR/yuna"
+cp "$ROOT_DIR/target/release/yunactl" "$BIN_DIR/yunactl"
 
 cat > "$PLIST_PATH" <<EOF_PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -30,7 +30,7 @@ cat > "$PLIST_PATH" <<EOF_PLIST
   <string>${LABEL}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>${BIN_DIR}/ghost</string>
+    <string>${BIN_DIR}/yuna</string>
   </array>
   <key>WorkingDirectory</key>
   <string>${HOME}</string>
@@ -44,9 +44,9 @@ cat > "$PLIST_PATH" <<EOF_PLIST
   <key>KeepAlive</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>${GHOST_DIR}/ghost.out.log</string>
+  <string>${YUNA_DIR}/yuna.out.log</string>
   <key>StandardErrorPath</key>
-  <string>${GHOST_DIR}/ghost.err.log</string>
+  <string>${YUNA_DIR}/yuna.err.log</string>
 </dict>
 </plist>
 EOF_PLIST
@@ -54,6 +54,6 @@ EOF_PLIST
 launchctl unload "$PLIST_PATH" >/dev/null 2>&1 || true
 launchctl load "$PLIST_PATH"
 
-echo "Installed Digital Ghost launch agent: $PLIST_PATH"
+echo "Installed Yūna launch agent: $PLIST_PATH"
 echo "Binaries installed to: $BIN_DIR"
-echo "Check status with: ghostctl status"
+echo "Check status with: yunactl status"

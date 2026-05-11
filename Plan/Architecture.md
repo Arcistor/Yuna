@@ -1,30 +1,30 @@
-# Digital Ghost — Architecture
+# Yuna — Architecture
 
 ## High-Level Structure
 
 ```
-ghost (binary)
+yuna (binary)
 ├── main.rs           — startup, load config, spawn tasks
-├── config.rs         — parse .ghostconfig (TOML)
+├── config.rs         — parse .yunaconfig (TOML)
 ├── watcher.rs        — filesystem event listener (notify crate)
 ├── store.rs          — SQLite read/write (events, mood, notes)
 ├── detector.rs       — behavior classification functions
-├── mood.rs           — ghost mood state machine
+├── mood.rs           — yuna mood state machine
 ├── ai.rs             — Ollama HTTP client, prompt builder
 ├── haunter.rs        — note writer, self-delete scheduler
 ├── aliases.rs        — shell alias injector (opt-in)
 ├── ascii.rs          — ASCII art by mood
-└── ghostctl/         — CLI tool (separate binary)
+└── yunactl/         — CLI tool (separate binary)
     └── main.rs       — start/stop/status/notes/mood commands
 ```
 
 ---
 
-## Config File (`.ghostconfig`)
+## Config File (`.yunaconfig`)
 
 ```toml
-[ghost]
-personality = "lonely_ghost"   # profile name
+[yuna]
+personality = "yuna"   # profile name
 ollama_model = "mistral"
 ollama_url = "http://localhost:11434"
 
@@ -156,10 +156,10 @@ You noticed: [BEHAVIOR_DESCRIPTION].
 Write a note to leave in the user's directory.
 ```
 
-Personality profiles loaded from `~/.ghost/profiles/<name>.toml`:
+Personality profiles loaded from `~/.yuna/profiles/<name>.toml`:
 ```toml
-name = "lonely_ghost"
-description = "A ghost who died coding alone and never shipped their project. Melancholic, dry humor, occasional jealousy."
+name = "yuna"
+description = "A yuna who died coding alone and never shipped their project. Melancholic, dry humor, occasional jealousy."
 tone = ["melancholic", "wry", "brief"]
 ascii_style = "minimal"
 ```
@@ -168,10 +168,10 @@ ascii_style = "minimal"
 
 ## Note File Format
 
-Filename: `.ghost_note` or randomized like `MESSAGE_FROM_THE_VOID.txt`
+Filename: `.yuna_note` or randomized like `MESSAGE_FROM_YUNA.txt`
 
 ```
-    ░▒▓  the ghost was here  ▓▒░
+    ░▒▓  the yuna was here  ▓▒░
 
   That's your third cup of coffee...
   Rest your eyes.
@@ -191,15 +191,15 @@ Filename: `.ghost_note` or randomized like `MESSAGE_FROM_THE_VOID.txt`
 
 ---
 
-## ghostctl CLI
+## yunactl CLI
 
 ```
-ghostctl start          # start daemon (systemd/launchd)
-ghostctl stop           # stop daemon
-ghostctl status         # show: running, mood, last event, notes count
-ghostctl notes          # list unread note paths
-ghostctl mood           # show current mood + what triggered it
-ghostctl silence 24h    # suppress notes for N hours
+yunactl start          # start daemon (systemd/launchd)
+yunactl stop           # stop daemon
+yunactl status         # show: running, mood, last event, notes count
+yunactl notes          # list unread note paths
+yunactl mood           # show current mood + what triggered it
+yunactl silence 24h    # suppress notes for N hours
 ```
 
 ---
@@ -207,7 +207,7 @@ ghostctl silence 24h    # suppress notes for N hours
 ## File Structure
 
 ```
-ghost/
+yuna/
 ├── Cargo.toml
 ├── src/
 │   ├── main.rs
@@ -220,13 +220,13 @@ ghost/
 │   ├── haunter.rs
 │   ├── aliases.rs
 │   └── ascii.rs
-├── ghostctl/
+├── yunactl/
 │   └── src/main.rs
 ├── profiles/
-│   ├── lonely_ghost.toml
+│   ├── yuna.toml
 │   ├── obsessive_maid.toml
 │   ├── dead_veteran_programmer.toml
 │   └── silent_monk.toml
-├── .ghostconfig.example
+├── .yunaconfig.example
 └── README.md
 ```

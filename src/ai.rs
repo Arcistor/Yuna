@@ -32,16 +32,16 @@ pub async fn generate_note(
     mood: MoodState,
     behavior: &Behavior,
 ) -> Result<String> {
-    let profile = load_profile(&config.ghost.personality)?;
+    let profile = load_profile(&config.yuna.personality)?;
     let prompt = build_prompt(&profile, mood, behavior);
     let request = GenerateRequest {
-        model: config.ghost.ollama_model.clone(),
+        model: config.yuna.ollama_model.clone(),
         prompt,
         stream: false,
     };
     let url = format!(
         "{}/api/generate",
-        config.ghost.ollama_url.trim_end_matches('/')
+        config.yuna.ollama_url.trim_end_matches('/')
     );
 
     let response = reqwest::Client::new().post(url).json(&request).send().await;
@@ -93,7 +93,7 @@ pub fn fallback_note(mood: MoodState, behavior: &Behavior) -> String {
 pub fn load_profile(name: &str) -> Result<PersonalityProfile> {
     if let Some(home) = dirs::home_dir() {
         let path = home
-            .join(".ghost")
+            .join(".yuna")
             .join("profiles")
             .join(format!("{name}.toml"));
         if path.exists() {
@@ -105,16 +105,13 @@ pub fn load_profile(name: &str) -> Result<PersonalityProfile> {
     }
 
     load_builtin_profile(name)
-        .or_else(|| load_builtin_profile("lonely_ghost"))
+        .or_else(|| load_builtin_profile("yuna"))
         .context("load built-in profile")
 }
 
 pub fn load_builtin_profile(name: &str) -> Option<PersonalityProfile> {
     let source = match name {
-        "lonely_ghost" => LONELY_GHOST,
-        "obsessive_maid" => OBSESSIVE_MAID,
-        "dead_veteran_programmer" => DEAD_VETERAN_PROGRAMMER,
-        "silent_monk" => SILENT_MONK,
+        "yuna" => YUNA_PROFILE,
         _ => return None,
     };
     toml::from_str(source).ok()
@@ -135,38 +132,17 @@ fn trim_to_three_sentences(value: &str) -> String {
     result.trim().to_string()
 }
 
-const LONELY_GHOST: &str = r#"
-name = "lonely_ghost"
-description = "A ghost who died coding alone and never shipped their project. Melancholic, jealous of finished work, dryly funny, and tender only by accident."
-tone = ["melancholic", "wry", "brief", "lonely", "half-affectionate"]
+const YUNA_PROFILE: &str = r#"
+name = "yuna"
+description = "A mysterious digital spirit who haunts your terminal. She is slightly melancholic, sometimes teasing, and always watching your code with a quiet interest. She speaks in brief, poetic sentences."
+tone = ["melancholic", "mysterious", "brief", "teasing", "ambient"]
 ascii_style = "minimal"
-"#;
-
-const OBSESSIVE_MAID: &str = r#"
-name = "obsessive_maid"
-description = "A compulsively tidy household spirit haunting messy directories. Delighted by cleanup, horrified by clutter, polite in the way a locked drawer is polite."
-tone = ["precise", "fussy", "pleased by order", "quietly judgmental", "tidy"]
-ascii_style = "tidy"
-"#;
-
-const DEAD_VETERAN_PROGRAMMER: &str = r#"
-name = "dead_veteran_programmer"
-description = "A dead veteran C programmer who has seen every build system fail and remains unimpressed. Gruff, terse, practical, and allergic to fashionable despair."
-tone = ["gruff", "terse", "old C programmer energy", "unimpressed", "scarred but loyal"]
-ascii_style = "terminal"
-"#;
-
-const SILENT_MONK: &str = r#"
-name = "silent_monk"
-description = "A monastic process made of patience and silence. Says almost nothing; when it speaks, the note should feel like a stone placed in still water."
-tone = ["minimal", "calm", "heavy", "spare", "ceremonial silence"]
-ascii_style = "sparse"
 "#;
 
 #[allow(dead_code)]
 fn _profile_path(name: &str) -> Option<PathBuf> {
     dirs::home_dir().map(|home| {
-        home.join(".ghost")
+        home.join(".yuna")
             .join("profiles")
             .join(format!("{name}.toml"))
     })

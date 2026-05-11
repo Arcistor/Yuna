@@ -3,7 +3,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchdConfig {
     pub label: String,
-    pub ghost_binary: PathBuf,
+    pub yuna_binary: PathBuf,
     pub working_directory: PathBuf,
     pub home: PathBuf,
     pub stdout_log: PathBuf,
@@ -13,7 +13,7 @@ pub struct LaunchdConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemdConfig {
     pub description: String,
-    pub ghost_binary: PathBuf,
+    pub yuna_binary: PathBuf,
     pub working_directory: PathBuf,
     pub home: PathBuf,
 }
@@ -28,7 +28,7 @@ pub fn render_launchd_plist(config: &LaunchdConfig) -> String {
   <string>{label}</string>
   <key>ProgramArguments</key>
   <array>
-    <string>{ghost_binary}</string>
+    <string>{yuna_binary}</string>
   </array>
   <key>WorkingDirectory</key>
   <string>{working_directory}</string>
@@ -49,7 +49,7 @@ pub fn render_launchd_plist(config: &LaunchdConfig) -> String {
 </plist>
 "#,
         label = escape_xml(&config.label),
-        ghost_binary = escape_xml(&config.ghost_binary.display().to_string()),
+        yuna_binary = escape_xml(&config.yuna_binary.display().to_string()),
         working_directory = escape_xml(&config.working_directory.display().to_string()),
         home = escape_xml(&config.home.display().to_string()),
         stdout_log = escape_xml(&config.stdout_log.display().to_string()),
@@ -65,7 +65,7 @@ After=default.target
 
 [Service]
 Type=simple
-ExecStart={ghost_binary}
+ExecStart={yuna_binary}
 WorkingDirectory={working_directory}
 Environment=HOME={home}
 Restart=on-failure
@@ -75,7 +75,7 @@ RestartSec=10
 WantedBy=default.target
 "#,
         description = escape_systemd(&config.description),
-        ghost_binary = escape_systemd(&config.ghost_binary.display().to_string()),
+        yuna_binary = escape_systemd(&config.yuna_binary.display().to_string()),
         working_directory = escape_systemd(&config.working_directory.display().to_string()),
         home = escape_systemd(&config.home.display().to_string())
     )

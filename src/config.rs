@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
-    pub ghost: GhostConfig,
+    pub yuna: YunaConfig,
     pub watch: WatchConfig,
     pub behavior: BehaviorConfig,
     pub limits: LimitsConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct GhostConfig {
+pub struct YunaConfig {
     pub personality: String,
     pub ollama_model: String,
     pub ollama_url: String,
@@ -42,14 +42,14 @@ impl Config {
     pub fn load() -> Result<Self> {
         let cwd_config = env::current_dir()
             .context("read current directory")?
-            .join(".ghostconfig");
+            .join(".yunaconfig");
         if cwd_config.exists() {
             return Self::load_from_path(&cwd_config);
         }
 
         let home_config = dirs::home_dir()
             .context("locate home directory")?
-            .join(".ghostconfig");
+            .join(".yunaconfig");
         Self::load_from_path(&home_config)
     }
 

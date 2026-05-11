@@ -2,19 +2,19 @@ use std::fs;
 use std::path::Path;
 
 use chrono::{Local, TimeZone};
-use digital_ghost::config::{BehaviorConfig, Config, GhostConfig, LimitsConfig, WatchConfig};
-use digital_ghost::detector::{
+use yuna::config::{BehaviorConfig, Config, YunaConfig, LimitsConfig, WatchConfig};
+use yuna::detector::{
     detect_cleaning, detect_midnight_worker, detect_procrastinator, detect_typo_repeater,
 };
-use digital_ghost::mood::update_mood;
-use digital_ghost::store::Store;
-use digital_ghost::types::{Behavior, EventKind, MoodState};
+use yuna::mood::update_mood;
+use yuna::store::Store;
+use yuna::types::{Behavior, EventKind, MoodState};
 use tempfile::tempdir;
 
 fn test_config(root: &Path) -> Config {
     Config {
-        ghost: GhostConfig {
-            personality: "lonely_ghost".to_string(),
+        yuna: YunaConfig {
+            personality: "yuna".to_string(),
             ollama_model: "mistral".to_string(),
             ollama_url: "http://127.0.0.1:9".to_string(),
         },
@@ -59,7 +59,7 @@ fn mood_transitions_match_behavior() {
 #[test]
 fn detects_cleaning_when_many_deletes_happen_quickly() {
     let dir = tempdir().unwrap();
-    let store = Store::new(&dir.path().join("ghost.db")).unwrap();
+    let store = Store::new(&dir.path().join("yuna.db")).unwrap();
     let config = test_config(dir.path());
 
     for index in 0..11 {
@@ -79,7 +79,7 @@ fn detects_cleaning_when_many_deletes_happen_quickly() {
 #[test]
 fn detects_procrastinator_for_untouched_new_project() {
     let dir = tempdir().unwrap();
-    let store = Store::new(&dir.path().join("ghost.db")).unwrap();
+    let store = Store::new(&dir.path().join("yuna.db")).unwrap();
     let config = test_config(dir.path());
     let project = dir.path().join("New Project");
 
@@ -116,7 +116,7 @@ fn detects_repeated_typo_from_history_file() {
 #[test]
 fn detects_midnight_worker_only_for_hours_after_local_midnight() {
     let dir = tempdir().unwrap();
-    let store = Store::new(&dir.path().join("ghost.db")).unwrap();
+    let store = Store::new(&dir.path().join("yuna.db")).unwrap();
     let config = test_config(dir.path());
     let code_file = dir.path().join("main.rs");
     let first = Local
@@ -148,7 +148,7 @@ fn detects_midnight_worker_only_for_hours_after_local_midnight() {
 #[test]
 fn ignores_work_before_local_midnight_for_midnight_worker() {
     let dir = tempdir().unwrap();
-    let store = Store::new(&dir.path().join("ghost.db")).unwrap();
+    let store = Store::new(&dir.path().join("yuna.db")).unwrap();
     let config = test_config(dir.path());
     let code_file = dir.path().join("main.rs");
     let before_midnight = Local

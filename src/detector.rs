@@ -12,14 +12,14 @@ use crate::types::{Behavior, EventKind};
 pub fn detect(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
     if let Some(b) = detect_cleaning(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_fresh_start(store, config, now)? { return Ok(Some(b)); }
-    if let Some(b) = detect_ghosted(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_yuna_missing(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_midnight_worker(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_night_owl(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_weekend_warrior(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_deadline_mode(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_hoarder(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_archaeologist(store, config, now)? { return Ok(Some(b)); }
-    if let Some(b) = detect_ghost_commit(store, config, now)? { return Ok(Some(b)); }
+    if let Some(b) = detect_yuna_commit(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_revert_spiral(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_duplicator(store, config, now)? { return Ok(Some(b)); }
     if let Some(b) = detect_empty_nest(store, config, now)? { return Ok(Some(b)); }
@@ -373,8 +373,8 @@ pub fn detect_duplicator(store: &Store, config: &Config, now: i64) -> Result<Opt
     Ok(None)
 }
 
-pub fn detect_ghost_commit(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
-    if in_cooldown(store, config, "ghost_commit", now)? {
+pub fn detect_yuna_commit(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "yuna_commit", now)? {
         return Ok(None);
     }
     let five_days = 5 * 24 * 3600_i64;
@@ -392,7 +392,7 @@ pub fn detect_ghost_commit(store: &Store, config: &Config, now: i64) -> Result<O
         let last_commit_age = git_last_commit_age_seconds(&directory);
         if last_commit_age >= five_days {
             let days_uncommitted = (last_commit_age / (24 * 3600)) as u32;
-            return Ok(Some(Behavior::GhostCommit { directory, days_uncommitted }));
+            return Ok(Some(Behavior::YunaCommit { directory, days_uncommitted }));
         }
     }
     Ok(None)
@@ -519,15 +519,15 @@ pub fn detect_deadline_mode(store: &Store, config: &Config, now: i64) -> Result<
     Ok(None)
 }
 
-pub fn detect_ghosted(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
-    if in_cooldown(store, config, "ghosted", now)? {
+pub fn detect_yuna_missing(store: &Store, config: &Config, now: i64) -> Result<Option<Behavior>> {
+    if in_cooldown(store, config, "yuna_missing", now)? {
         return Ok(None);
     }
     let last = store.last_event_time()?;
     let Some(last_ts) = last else { return Ok(None) };
     let days_absent = ((now - last_ts) / (24 * 3600)) as u32;
     if days_absent >= 3 {
-        return Ok(Some(Behavior::Ghosted { days_absent }));
+        return Ok(Some(Behavior::YunaMissing { days_absent }));
     }
     Ok(None)
 }

@@ -1,23 +1,23 @@
 use std::fs;
 use std::path::Path;
 
-use digital_ghost::config::Config;
-use digital_ghost::store::Store;
-use digital_ghost::types::{EventKind, MoodState};
+use yuna::config::Config;
+use yuna::store::Store;
+use yuna::types::{EventKind, MoodState};
 use tempfile::tempdir;
 
 fn write_config(path: &Path) {
     fs::write(
         path,
         r#"
-[ghost]
-personality = "lonely_ghost"
+[yuna]
+personality = "yuna"
 ollama_model = "mistral"
 ollama_url = "http://localhost:11434"
 
 [watch]
-paths = ["/tmp/ghost-watch"]
-exclude = ["/tmp/ghost-watch/target", "/tmp/ghost-watch/.git"]
+paths = ["/tmp/yuna-watch"]
+exclude = ["/tmp/yuna-watch/target", "/tmp/yuna-watch/.git"]
 
 [behavior]
 alias_injection = false
@@ -25,7 +25,7 @@ note_lifetime_minutes = 60
 
 [limits]
 max_cpu_percent = 0.5
-cooldown_hours = 24
+cooldown_seconds = 86400
 "#,
     )
     .unwrap();
@@ -34,12 +34,12 @@ cooldown_hours = 24
 #[test]
 fn loads_config_from_explicit_path() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join(".ghostconfig");
+    let path = dir.path().join(".yunaconfig");
     write_config(&path);
 
     let config = Config::load_from_path(&path).unwrap();
 
-    assert_eq!(config.ghost.personality, "lonely_ghost");
+    assert_eq!(config.yuna.personality, "yuna");
     assert_eq!(config.watch.paths.len(), 1);
     assert_eq!(config.behavior.note_lifetime_minutes, 60);
     assert_eq!(config.limits.cooldown_seconds, 86400);
@@ -48,7 +48,7 @@ fn loads_config_from_explicit_path() {
 #[test]
 fn config_adds_default_system_excludes_to_user_excludes() {
     let dir = tempdir().unwrap();
-    let path = dir.path().join(".ghostconfig");
+    let path = dir.path().join(".yunaconfig");
     write_config(&path);
 
     let config = Config::load_from_path(&path).unwrap();
@@ -59,13 +59,13 @@ fn config_adds_default_system_excludes_to_user_excludes() {
     assert!(excludes.iter().any(|path| path == Path::new("/etc")));
     assert!(excludes
         .iter()
-        .any(|path| path == Path::new("/tmp/ghost-watch/.git")));
+        .any(|path| path == Path::new("/tmp/yuna-watch/.git")));
 }
 
 #[test]
 fn store_creates_schema_and_persists_core_state() {
     let dir = tempdir().unwrap();
-    let db_path = dir.path().join("ghost.db");
+    let db_path = dir.path().join("yuna.db");
     let store = Store::new(&db_path).unwrap();
 
     store
@@ -80,7 +80,7 @@ fn store_creates_schema_and_persists_core_state() {
     assert_eq!(store.get_mood().unwrap(), MoodState::Concerned);
 
     let note_id = store
-        .insert_note(Path::new("/tmp/project/.ghost_note"), "cleaning", 200)
+        .insert_note(Path::new("/tmp/project/note.yuna"), "cleaning", 200)
         .unwrap();
     store.mark_note_read(note_id, 250).unwrap();
     let notes = store.list_undeleted_notes().unwrap();

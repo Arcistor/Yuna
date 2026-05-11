@@ -1,11 +1,11 @@
-# Digital Ghost — Project Plan
+# Yuna — Project Plan
 
 ## Phase 1: Observer (Eye)
 
 Goals: daemon runs, watches filesystem, logs events.
 
 - [ ] Project scaffold — Rust with Cargo, single binary
-- [ ] Read `.ghostconfig` file (watched paths, excluded paths, personality setting)
+- [ ] Read `.yunaconfig` file (watched paths, excluded paths, personality setting)
 - [ ] Filesystem watcher using `notify` crate (event-based, not polling)
 - [ ] Event types to track:
   - File created / modified / deleted
@@ -20,7 +20,7 @@ Deliverable: daemon starts, watches configured paths, writes events to SQLite si
 
 ## Phase 2: Memory (Soul State)
 
-Goals: ghost builds behavioral model from event history.
+Goals: yuna builds behavioral model from event history.
 
 - [ ] Behavior detector functions:
   - `is_midnight_worker()` — 4+ hours editing code files past midnight
@@ -32,33 +32,33 @@ Goals: ghost builds behavioral model from event history.
   - Mood stored in SQLite, persists across restarts
 - [ ] Cooldown system — same behavior doesn't trigger note twice within 24 hours
 
-Deliverable: ghost correctly classifies behaviors and tracks mood without writing any notes yet.
+Deliverable: yuna correctly classifies behaviors and tracks mood without writing any notes yet.
 
 ---
 
 ## Phase 3: Voice (Haunting)
 
-Goals: ghost writes notes, manages their lifecycle.
+Goals: yuna writes notes, manages their lifecycle.
 
 - [ ] Ollama integration via HTTP (`reqwest` crate) — call local LLM
-- [ ] System prompt builder — loads personality from `.ghostconfig`, injects current mood + behavior context
-- [ ] Note writer — drops `.ghost_note` or `MESSAGE_FROM_THE_VOID.txt` in triggering directory
+- [ ] System prompt builder — loads personality from `.yunaconfig`, injects current mood + behavior context
+- [ ] Note writer — drops `.yuna_note` or `MESSAGE_FROM_YUNA.txt` in triggering directory
 - [ ] ASCII art generator — small mood-matched ASCII embedded in note header
 - [ ] Self-delete scheduler — track note `atime`; delete 1 hour after read
 - [ ] Alias injector (opt-in) — appends alias to `.bashrc`/`.zshrc`, leaves note about it
 
-Deliverable: ghost writes personality-driven notes in response to real behaviors.
+Deliverable: yuna writes personality-driven notes in response to real behaviors.
 
 ---
 
 ## Phase 4: Personality Profiles
 
-Goals: swappable ghost personalities.
+Goals: swappable yuna personalities.
 
-- [ ] Built-in profiles: `lonely_ghost`, `obsessive_maid`, `dead_veteran_programmer`, `silent_monk`
+- [ ] Built-in profiles: `yuna`, `obsessive_maid`, `dead_veteran_programmer`, `silent_monk`
 - [ ] Each profile: name, tone descriptors, vocabulary hints, ASCII art style
 - [ ] Profile loaded into Ollama system prompt at startup
-- [ ] User can write custom profiles as `.toml` files in `~/.ghost/profiles/`
+- [ ] User can write custom profiles as `.toml` files in `~/.yuna/profiles/`
 
 ---
 
@@ -66,7 +66,7 @@ Goals: swappable ghost personalities.
 
 - [ ] Resource guard — max 0.5% CPU average, event-based only (no polling loops)
 - [ ] Path exclusion — never watch system dirs (`/sys`, `/proc`, `/etc`, etc.)
-- [ ] `ghostctl` CLI: `start`, `stop`, `status`, `notes` (list unread), `mood` (show current state)
+- [ ] `yunactl` CLI: `start`, `stop`, `status`, `notes` (list unread), `mood` (show current state)
 - [ ] Install script — systemd service (Linux) or launchd plist (macOS)
 - [ ] README with setup, config reference, example notes
 
@@ -81,5 +81,5 @@ Goals: swappable ghost personalities.
 | LLM | Ollama (`mistral` or `tinyllama`) | Local, private, fast enough for notes |
 | Database | SQLite via `rusqlite` | Lightweight, no server, persists history |
 | HTTP client | `reqwest` | Ollama API calls |
-| Config | TOML via `toml` crate | Human-writable `.ghostconfig` |
+| Config | TOML via `toml` crate | Human-writable `.yunaconfig` |
 | Scheduling | `tokio` async runtime | Non-blocking timers, atime checks |

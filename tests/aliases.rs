@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use digital_ghost::aliases::{
+use yuna::aliases::{
     inject_alias, rc_file_for_shell, suggestion_for_command, AliasSuggestion,
 };
 use tempfile::tempdir;
@@ -31,7 +31,7 @@ fn ignores_commands_that_are_not_known_typos() {
 
 #[test]
 fn selects_rc_file_from_shell_name() {
-    let home = Path::new("/tmp/ghost-home");
+    let home = Path::new("/tmp/yuna-home");
 
     assert_eq!(rc_file_for_shell(home, "/bin/zsh"), home.join(".zshrc"));
     assert_eq!(
@@ -56,5 +56,5 @@ fn inject_alias_appends_managed_line_once() {
 
     let content = fs::read_to_string(&rc_file).unwrap();
     assert_eq!(content.matches("alias gti='git'").count(), 1);
-    assert!(content.contains("# Added by Digital Ghost"));
+    assert!(content.contains("# Added by Yuna"));
 }

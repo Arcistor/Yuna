@@ -1,12 +1,12 @@
 use anyhow::Result;
 use chrono::{Local, TimeZone};
 use clap::{Parser, Subcommand};
-use digital_ghost::app::{
+use yuna::app::{
     daemon_status, open_default_store, start_daemon_process, stop_daemon_process, DaemonState,
 };
 
 #[derive(Debug, Parser)]
-#[command(name = "ghostctl", about = "Inspect the Digital Ghost daemon state")]
+#[command(name = "yunactl", about = "Inspect the Yuna daemon state")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

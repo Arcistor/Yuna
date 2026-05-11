@@ -1,6 +1,6 @@
 /target/
-.ghostconfig
+.yunaconfig
 .DS_Store
 Cargo.lock
 /files/
-.ghost_note*
+*.yuna
