@@ -213,6 +213,14 @@ impl Store {
             .optional()?;
         Ok(until.is_some_and(|value| value > now))
     }
+
+    pub fn last_note_time(&self) -> Result<Option<i64>> {
+        Ok(self
+            .connect()?
+            .query_row("SELECT MAX(created) FROM notes", [], |row| {
+                row.get::<_, Option<i64>>(0)
+            })?)
+    }
 }
 
 fn map_event(row: &rusqlite::Row<'_>) -> rusqlite::Result<EventRecord> {

@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::mpsc;
 
 use crate::ai::generate_note;
@@ -41,6 +42,33 @@ pub async fn run_daemon() -> Result<()> {
     let (sender, mut receiver) = mpsc::channel(256);
     let _watcher = FsWatcher::start(&config, sender)?;
 
+    let mut ollama_child = if !ollama_is_running(&config).await {
+        let cmd = if Path::new("/opt/homebrew/bin/ollama").exists() {
+            "/opt/homebrew/bin/ollama"
+        } else {
+            "ollama"
+        };
+        match tokio::process::Command::new(cmd)
+            .arg("serve")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn() {
+                Ok(child) => {
+                    eprintln!("started ollama serve");
+                    Some(child)
+                }
+                Err(e) => {
+                    eprintln!("failed to start ollama: {e}");
+                    None
+                }
+            }
+    } else {
+        None
+    };
+
+    let mut sigterm = signal(SignalKind::terminate())?;
+
     let reaper_store = store.clone();
     let reaper_config = config.clone();
     tokio::spawn(async move {
@@ -64,63 +92,98 @@ pub async fn run_daemon() -> Result<()> {
             if typo_store.is_silenced(now).unwrap_or(false) {
                 continue;
             }
+
+            // Global cooldown check
+            let cooldown = typo_config.limits.cooldown_seconds;
+            if let Ok(Some(last_time)) = typo_store.last_note_time() {
+                if now - last_time < cooldown {
+                    continue;
+                }
+            }
+
             let candidates = [
                 detector::detect_typo_repeater(&typo_config, None),
                 detector::detect_alias_candidate(&typo_config, None),
             ];
+
             for result in candidates {
                 let Ok(Some(behavior)) = result else { continue };
-                let since = now - typo_config.limits.cooldown_seconds;
                 let already_noted = typo_store
-                    .recent_note_exists(behavior.trigger_name(), since)
+                    .recent_note_exists(behavior.trigger_name(), now - cooldown)
                     .unwrap_or(true);
                 if already_noted { continue; }
+
                 let current = typo_store.get_mood().unwrap_or(MoodState::Calm);
                 let mood = update_mood(current, &behavior);
                 if typo_store.set_mood(mood).is_err() { continue; }
+
                 let note = match generate_note(&typo_config, mood, &behavior).await {
                     Ok(n) => n,
                     Err(_) => continue,
                 };
                 let alias_note = maybe_inject_alias(&typo_config, &behavior).ok().flatten();
                 let final_note = alias_note.unwrap_or(note);
-                let directory = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+
+                let directory = choose_default_directory(&typo_config);
                 let _ = drop_note(&directory, &final_note, ascii_for_mood(&mood), &typo_store, &behavior, now).await;
+                
+                // Only one note per typo check cycle
+                break;
             }
         }
     });
 
-    while let Some(event) = receiver.recv().await {
-        store.insert_event(&event.path, event.kind, event.timestamp)?;
-        let now = chrono::Utc::now().timestamp();
-        if store.is_silenced(now)? {
-            continue;
-        }
+    loop {
+        tokio::select! {
+            event = receiver.recv() => {
+                let Some(event) = event else { break; };
+                store.insert_event(&event.path, event.kind, event.timestamp)?;
+                let now = chrono::Utc::now().timestamp();
+                if store.is_silenced(now)? {
+                    continue;
+                }
 
-        let Some(behavior) = detector::detect(&store, &config, now)? else {
-            continue;
-        };
-        let current = store.get_mood().unwrap_or(MoodState::Calm);
-        let mood = update_mood(current, &behavior);
-        store.set_mood(mood)?;
-        let mut note = generate_note(&config, mood, &behavior).await?;
-        if let Some(alias_note) = maybe_inject_alias(&config, &behavior)? {
-            note = alias_note;
+                // Global cooldown check
+                let cooldown = config.limits.cooldown_seconds;
+                if let Ok(Some(last_time)) = store.last_note_time() {
+                    if now - last_time < cooldown {
+                        continue;
+                    }
+                }
+
+                let Some(behavior) = detector::detect(&store, &config, now)? else {
+                    continue;
+                };
+                let current = store.get_mood().unwrap_or(MoodState::Calm);
+                let mood = update_mood(current, &behavior);
+                store.set_mood(mood)?;
+                let mut note = generate_note(&config, mood, &behavior).await?;
+                if let Some(alias_note) = maybe_inject_alias(&config, &behavior)? {
+                    note = alias_note;
+                }
+                let directory = behavior
+                    .directory()
+                    .cloned()
+                    .unwrap_or_else(|| choose_default_directory(&config));
+                drop_note(
+                    &directory,
+                    &note,
+                    ascii_for_mood(&mood),
+                    &store,
+                    &behavior,
+                    now,
+                )
+                .await?;
+            }
+            _ = sigterm.recv() => {
+                eprintln!("received SIGTERM, shutting down...");
+                if let Some(mut child) = ollama_child.take() {
+                    let _ = child.kill().await;
+                    eprintln!("terminated ollama serve");
+                }
+                break;
+            }
         }
-        let directory = behavior
-            .directory()
-            .cloned()
-            .or_else(dirs::home_dir)
-            .context("choose note directory")?;
-        drop_note(
-            &directory,
-            &note,
-            ascii_for_mood(&mood),
-            &store,
-            &behavior,
-            now,
-        )
-        .await?;
     }
 
     Ok(())
@@ -138,6 +201,24 @@ fn maybe_inject_alias(config: &Config, behavior: &Behavior) -> Result<Option<Str
         return Ok(None);
     };
     Ok(inject_for_command(command)?.map(|suggestion| suggestion.note()))
+}
+
+async fn ollama_is_running(config: &Config) -> bool {
+    reqwest::Client::new()
+        .get(&config.yuna.ollama_url)
+        .timeout(Duration::from_millis(500))
+        .send()
+        .await
+        .is_ok()
+}
+
+fn choose_default_directory(config: &Config) -> PathBuf {
+    config
+        .watch
+        .paths
+        .first()
+        .cloned()
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")))
 }
 
 pub fn default_db_path() -> Result<PathBuf> {

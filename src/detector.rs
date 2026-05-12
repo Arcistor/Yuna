@@ -206,6 +206,15 @@ fn normalize_history_line(line: &str) -> String {
 
 fn looks_like_typo(command: &str) -> bool {
     let first = command.split_whitespace().next().unwrap_or_default();
+    if first.is_empty() {
+        return false;
+    }
+
+    // If the command already exists, it's not a typo
+    if is_valid_command(first) {
+        return false;
+    }
+
     if matches!(first, "gti" | "sl" | "pyhton" | "pnpmn" | "nmp") {
         return true;
     }
@@ -213,6 +222,16 @@ fn looks_like_typo(command: &str) -> bool {
     common_commands()
         .iter()
         .any(|valid| first != *valid && edit_distance_at_most_one(first, valid))
+}
+
+fn is_valid_command(command: &str) -> bool {
+    std::process::Command::new("which")
+        .arg(command)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 fn common_commands() -> &'static [&'static str] {

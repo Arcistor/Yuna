@@ -73,7 +73,18 @@ fn is_excluded(path: &Path, excludes: &[PathBuf]) -> bool {
             "arigato.yuna",
             "haunted.yuna",
         ];
-        return yuna_patterns.iter().any(|p| filename.starts_with(p));
+        if yuna_patterns.iter().any(|p| filename.starts_with(p)) {
+            return true;
+        }
+    }
+
+    // Hardcoded safety excludes
+    for component in path.components() {
+        if let Some(name) = component.as_os_str().to_str() {
+            if matches!(name, "target" | "node_modules" | ".git" | ".vscode" | ".venv" | ".claude") {
+                return true;
+            }
+        }
     }
 
     false
