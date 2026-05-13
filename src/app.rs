@@ -439,3 +439,23 @@ impl Drop for PidFileGuard {
         let _ = remove_pid_file(&self.path);
     }
 }
+
+pub fn stop_ollama_process() -> Result<()> {
+    #[cfg(not(windows))]
+    {
+        // On Mac/Linux, try pkill. Ignore errors if process isn't found.
+        let _ = std::process::Command::new("pkill")
+            .arg("-i") // Case-insensitive for "Ollama" vs "ollama"
+            .arg("ollama")
+            .status();
+        Ok(())
+    }
+    #[cfg(windows)]
+    {
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "ollama.exe"])
+            .status();
+        Ok(())
+    }
+}
+

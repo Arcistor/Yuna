@@ -18,7 +18,11 @@ enum Command {
     /// Start the Yuna daemon
     Start,
     /// Stop the Yuna daemon
-    Stop,
+    Stop {
+        /// Also stop the Ollama service
+        #[arg(short, long)]
+        all: bool,
+    },
     /// Show current status, mood, and unread note count
     Status,
     /// List notes dropped by Yuna
@@ -29,6 +33,9 @@ enum Command {
         /// Show only notes that have been read
         #[arg(short, long)]
         read: bool,
+        /// Delete all notes (files and database records)
+        #[arg(short, long)]
+        clear: bool,
     },
     /// Show Yuna's current emotional state
     Mood,
@@ -54,10 +61,16 @@ fn main() -> Result<()> {
             let pid = start_daemon_process()?;
             println!("started: {pid}");
         }
-        Command::Stop => match stop_daemon_process()? {
-            Some(pid) => println!("stopped: {pid}"),
-            None => println!("stopped: already"),
-        },
+        Command::Stop { all } => {
+            match stop_daemon_process()? {
+                Some(pid) => println!("stopped yuna: {pid}"),
+                None => println!("stopped yuna: already"),
+            }
+            if all {
+                yuna::app::stop_ollama_process()?;
+                println!("stopped ollama");
+            }
+        }
         Command::Status => {
             let config = Config::load()?;
             let daemon = daemon_status()?;
@@ -83,23 +96,31 @@ fn main() -> Result<()> {
             println!("last_event: {last_event}");
             println!("unread_notes: {note_count}");
         }
-        Command::Notes { all, read } => {
-            for note in store.list_undeleted_notes()? {
-                if all {
-                    let status = if note.read_at.is_some() {
-                        "[READ]"
+        Command::Notes { all, read, clear } => {
+            if clear {
+                tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()?
+                    .block_on(yuna::haunter::clear_all_notes(&store))?;
+                println!("all notes cleared");
+            } else {
+                for note in store.list_undeleted_notes()? {
+                    if all {
+                        let status = if note.read_at.is_some() {
+                            "[READ]"
+                        } else {
+                            "[NEW]"
+                        };
+                        println!("{:<6} {}", status, note.path.display());
+                    } else if read {
+                        if note.read_at.is_some() {
+                            println!("{}", note.path.display());
+                        }
                     } else {
-                        "[NEW]"
-                    };
-                    println!("{:<6} {}", status, note.path.display());
-                } else if read {
-                    if note.read_at.is_some() {
-                        println!("{}", note.path.display());
-                    }
-                } else {
-                    // Default: unread only
-                    if note.read_at.is_none() {
-                        println!("{}", note.path.display());
+                        // Default: unread only
+                        if note.read_at.is_none() {
+                            println!("{}", note.path.display());
+                        }
                     }
                 }
             }

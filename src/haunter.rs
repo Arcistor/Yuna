@@ -102,3 +102,12 @@ fn accessed_at(path: &Path) -> Option<i64> {
         .ok()
         .map(|duration| duration.as_secs() as i64)
 }
+
+pub async fn clear_all_notes(store: &Store) -> Result<()> {
+    for note in store.list_undeleted_notes()? {
+        tokio::fs::remove_file(&note.path).await.ok();
+        store.mark_note_deleted(note.id)?;
+    }
+    Ok(())
+}
+
