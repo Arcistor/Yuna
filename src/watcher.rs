@@ -67,12 +67,7 @@ fn is_excluded(path: &Path, excludes: &[PathBuf]) -> bool {
     }
 
     if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
-        let yuna_patterns = [
-            "note.yuna",
-            "message.yuna",
-            "arigato.yuna",
-            "haunted.yuna",
-        ];
+        let yuna_patterns = ["note.yuna", "message.yuna", "arigato.yuna", "haunted.yuna"];
         if yuna_patterns.iter().any(|p| filename.starts_with(p)) {
             return true;
         }
@@ -81,7 +76,10 @@ fn is_excluded(path: &Path, excludes: &[PathBuf]) -> bool {
     // Hardcoded safety excludes
     for component in path.components() {
         if let Some(name) = component.as_os_str().to_str() {
-            if matches!(name, "target" | "node_modules" | ".git" | ".vscode" | ".venv" | ".claude") {
+            if matches!(
+                name,
+                "target" | "node_modules" | ".git" | ".vscode" | ".venv" | ".claude"
+            ) {
                 return true;
             }
         }

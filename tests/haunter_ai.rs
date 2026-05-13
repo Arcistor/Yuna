@@ -1,18 +1,19 @@
 use std::fs;
 use std::path::Path;
 
+use tempfile::tempdir;
 use yuna::ai::{build_prompt, fallback_note, load_builtin_profile, PersonalityProfile};
 use yuna::ascii::ascii_for_mood;
-use yuna::config::{BehaviorConfig, Config, YunaConfig, LimitsConfig, WatchConfig};
+use yuna::config::{BehaviorConfig, Config, LimitsConfig, WatchConfig, YunaConfig};
 use yuna::haunter::{drop_note, reap_notes};
 use yuna::store::Store;
 use yuna::types::{Behavior, MoodState};
-use tempfile::tempdir;
 
 fn test_config(root: &Path) -> Config {
     Config {
         yuna: YunaConfig {
             personality: "yuna".to_string(),
+            language: "en".to_string(),
             ollama_model: "mistral".to_string(),
             ollama_url: "http://127.0.0.1:9".to_string(),
         },
@@ -44,7 +45,7 @@ fn prompt_contains_personality_mood_and_behavior() {
         delete_count: 12,
     };
 
-    let prompt = build_prompt(&profile, MoodState::Grateful, &behavior);
+    let prompt = build_prompt(&profile, MoodState::Grateful, &behavior, "en");
 
     assert!(prompt.contains("yuna"));
     assert!(prompt.contains("grateful"));
@@ -67,7 +68,7 @@ fn fallback_note_is_short_and_in_character() {
         hours: 4.0,
     };
 
-    let note = fallback_note(MoodState::Concerned, &behavior);
+    let note = fallback_note(MoodState::Concerned, &behavior, "en");
 
     assert!(note.split('.').count() <= 4);
     assert!(note.contains("morning") || note.contains("watching"));

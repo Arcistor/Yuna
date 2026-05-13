@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 use yuna::app::{
     daemon_status, open_default_store, start_daemon_process, stop_daemon_process, DaemonState,
 };
+use yuna::config::Config;
 
 #[derive(Debug, Parser)]
 #[command(name = "yunactl", about = "Inspect the Yuna daemon state")]
@@ -32,9 +33,9 @@ enum Command {
     /// Show Yuna's current emotional state
     Mood,
     /// Silence Yuna for a specific duration (e.g., 2h, 30m, 1d)
-    Silence { 
+    Silence {
         /// Duration of silence (e.g., 1h, 30m)
-        duration: String 
+        duration: String,
     },
     /// Show recent filesystem events recorded by Yuna
     Log {
@@ -58,6 +59,7 @@ fn main() -> Result<()> {
             None => println!("stopped: already"),
         },
         Command::Status => {
+            let config = Config::load()?;
             let daemon = daemon_status()?;
             let mood = store.get_mood()?;
             let last_event = store
@@ -77,13 +79,18 @@ fn main() -> Result<()> {
                 println!("pid_status: stale_removed");
             }
             println!("mood: {mood}");
+            println!("language: {}", config.yuna.language);
             println!("last_event: {last_event}");
             println!("unread_notes: {note_count}");
         }
         Command::Notes { all, read } => {
             for note in store.list_undeleted_notes()? {
                 if all {
-                    let status = if note.read_at.is_some() { "[READ]" } else { "[NEW]" };
+                    let status = if note.read_at.is_some() {
+                        "[READ]"
+                    } else {
+                        "[NEW]"
+                    };
                     println!("{:<6} {}", status, note.path.display());
                 } else if read {
                     if note.read_at.is_some() {

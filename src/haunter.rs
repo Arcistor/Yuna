@@ -22,7 +22,8 @@ pub async fn drop_note(
         .with_context(|| format!("create note directory {}", directory.display()))?;
 
     let existing = store.list_undeleted_notes()?;
-    let mut dir_notes: Vec<_> = existing.iter()
+    let mut dir_notes: Vec<_> = existing
+        .iter()
         .filter(|n| !n.deleted && n.path.parent() == Some(directory))
         .collect();
     if dir_notes.len() >= 3 {
@@ -34,7 +35,7 @@ pub async fn drop_note(
     }
 
     let path = choose_note_path(directory);
-    let note = format!("{ascii}\n\n{content}\n\n                              - still watching\n");
+    let note = format!("{ascii}\n\n{content}\n\n  - still watching\n");
     tokio::fs::write(&path, note)
         .await
         .with_context(|| format!("write note {}", path.display()))?;
@@ -73,12 +74,7 @@ pub async fn reap_notes(store: &Store, config: &Config, now: i64) -> Result<()> 
 
 fn choose_note_path(directory: &Path) -> PathBuf {
     let mut rng = rand::thread_rng();
-    let names = [
-        "note.yuna",
-        "message.yuna",
-        "arigato.yuna",
-        "haunted.yuna",
-    ];
+    let names = ["note.yuna", "message.yuna", "arigato.yuna", "haunted.yuna"];
     let name = if rand::random::<f32>() < 0.7 {
         "note.yuna"
     } else {

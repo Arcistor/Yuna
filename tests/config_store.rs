@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::Path;
 
+use tempfile::tempdir;
 use yuna::config::Config;
 use yuna::store::Store;
 use yuna::types::{EventKind, MoodState};
-use tempfile::tempdir;
 
 fn write_config(path: &Path) {
     fs::write(
@@ -12,6 +12,7 @@ fn write_config(path: &Path) {
         r#"
 [yuna]
 personality = "yuna"
+language = "en"
 ollama_model = "mistral"
 ollama_url = "http://localhost:11434"
 

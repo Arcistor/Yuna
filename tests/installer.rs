@@ -1,8 +1,6 @@
 use std::path::Path;
 
-use yuna::installer::{
-    render_launchd_plist, render_systemd_unit, LaunchdConfig, SystemdConfig,
-};
+use yuna::installer::{render_launchd_plist, render_systemd_unit, LaunchdConfig, SystemdConfig};
 
 #[test]
 fn launchd_plist_contains_binary_paths_and_home_environment() {

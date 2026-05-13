@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::Path;
 
+use tempfile::tempdir;
 use yuna::app::{
     daemon_status_from_pid_file, read_pid_file, remove_pid_file, write_pid_file, DaemonState,
 };
-use tempfile::tempdir;
 
 #[test]
 fn pid_file_round_trips_process_id() {

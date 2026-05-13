@@ -3,6 +3,26 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TimeSlot {
+    Morning,
+    Afternoon,
+    Evening,
+    Night,
+}
+
+impl TimeSlot {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Morning => "morning",
+            Self::Afternoon => "afternoon",
+            Self::Evening => "evening",
+            Self::Night => "night",
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventKind {
@@ -155,6 +175,26 @@ pub enum Behavior {
     FreshStart {
         days_absent: u32,
     },
+    TimeOfDayGreeting {
+        slot: TimeSlot,
+    },
+    HeatAwareness {
+        cpu_usage: f32,
+    },
+    HolidayEvent {
+        holiday_name: String,
+    },
+    Frustration {
+        command: String,
+        count: u32,
+    },
+    DeepAlias {
+        command: String,
+        suggested_alias: String,
+    },
+    NoteReplied {
+        reply_text: String,
+    },
 }
 
 impl Behavior {
@@ -175,7 +215,18 @@ impl Behavior {
             Self::WeekendWarrior { .. } => "weekend_warrior",
             Self::DeadlineMode { .. } => "deadline_mode",
             Self::YunaMissing { .. } => "yuna_missing",
+            Self::TimeOfDayGreeting { slot } => match slot {
+                TimeSlot::Morning => "time_greeting_morning",
+                TimeSlot::Afternoon => "time_greeting_afternoon",
+                TimeSlot::Evening => "time_greeting_evening",
+                TimeSlot::Night => "time_greeting_night",
+            },
             Self::FreshStart { .. } => "fresh_start",
+            Self::HeatAwareness { .. } => "heat_awareness",
+            Self::HolidayEvent { .. } => "holiday_event",
+            Self::Frustration { .. } => "frustration",
+            Self::DeepAlias { .. } => "deep_alias",
+            Self::NoteReplied { .. } => "note_replied",
         }
     }
 
@@ -196,7 +247,13 @@ impl Behavior {
             Self::TypoRepeater { .. }
             | Self::AliasCandidate { .. }
             | Self::YunaMissing { .. }
-            | Self::FreshStart { .. } => None,
+            | Self::TimeOfDayGreeting { .. }
+            | Self::FreshStart { .. }
+            | Self::HeatAwareness { .. }
+            | Self::HolidayEvent { .. }
+            | Self::Frustration { .. }
+            | Self::DeepAlias { .. }
+            | Self::NoteReplied { .. } => None,
         }
     }
 
@@ -253,6 +310,30 @@ impl Behavior {
             ),
             Self::FreshStart { days_absent } => format!(
                 "the user returned after {days_absent} days away"
+            ),
+            Self::TimeOfDayGreeting { slot } => format!(
+                "it is now {} — greet the user and offer a suggestion or ask a question",
+                slot.as_str()
+            ),
+            Self::HeatAwareness { cpu_usage } => format!(
+                "the user's computer CPU is running very hot at {:.1}% usage",
+                cpu_usage
+            ),
+            Self::HolidayEvent { holiday_name } => format!(
+                "today is {} — acknowledge the occasion",
+                holiday_name
+            ),
+            Self::Frustration { command, count } => format!(
+                "the user has rapidly repeated the exact same failing command '{}' {} times out of frustration",
+                command, count
+            ),
+            Self::DeepAlias { command, suggested_alias } => format!(
+                "the user frequently types the very long and complex command '{}' and should use an alias like '{}'",
+                command, suggested_alias
+            ),
+            Self::NoteReplied { reply_text } => format!(
+                "the user replied to your previous note with the text: '{}'",
+                reply_text
             ),
         }
     }

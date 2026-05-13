@@ -16,6 +16,7 @@ pub struct Config {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct YunaConfig {
     pub personality: String,
+    pub language: String,
     pub ollama_model: String,
     pub ollama_url: String,
 }

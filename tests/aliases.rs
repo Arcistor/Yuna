@@ -1,10 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-use yuna::aliases::{
-    inject_alias, rc_file_for_shell, suggestion_for_command, AliasSuggestion,
-};
 use tempfile::tempdir;
+use yuna::aliases::{inject_alias, rc_file_for_shell, suggestion_for_command, AliasSuggestion};
 
 #[test]
 fn suggests_alias_for_known_transposed_git_typo() {

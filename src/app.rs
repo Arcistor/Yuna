@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use sysinfo::{CpuRefreshKind, RefreshKind, System};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::mpsc;
 
@@ -53,16 +54,17 @@ pub async fn run_daemon() -> Result<()> {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
-            .spawn() {
-                Ok(child) => {
-                    eprintln!("started ollama serve");
-                    Some(child)
-                }
-                Err(e) => {
-                    eprintln!("failed to start ollama: {e}");
-                    None
-                }
+            .spawn()
+        {
+            Ok(child) => {
+                eprintln!("started ollama serve");
+                Some(child)
             }
+            Err(e) => {
+                eprintln!("failed to start ollama: {e}");
+                None
+            }
+        }
     } else {
         None
     };
@@ -84,10 +86,14 @@ pub async fn run_daemon() -> Result<()> {
 
     let typo_store = store.clone();
     let typo_config = config.clone();
+    let mut typo_interval = tokio::time::interval(Duration::from_secs(60));
+    let mut sys =
+        System::new_with_specifics(RefreshKind::new().with_cpu(CpuRefreshKind::everything()));
+
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(60));
         loop {
-            interval.tick().await;
+            typo_interval.tick().await;
+            sys.refresh_cpu_usage();
             let now = chrono::Utc::now().timestamp();
             if typo_store.is_silenced(now).unwrap_or(false) {
                 continue;
@@ -101,21 +107,42 @@ pub async fn run_daemon() -> Result<()> {
                 }
             }
 
-            let candidates = [
+            let mut total_cpu = 0.0;
+            let cpus = sys.cpus();
+            for cpu in cpus {
+                total_cpu += cpu.cpu_usage();
+            }
+            let avg_cpu = if cpus.is_empty() {
+                0.0
+            } else {
+                total_cpu / cpus.len() as f32
+            };
+
+            let mut candidates = vec![
                 detector::detect_typo_repeater(&typo_config, None),
                 detector::detect_alias_candidate(&typo_config, None),
+                detector::detect_frustration(&typo_store, &typo_config, None),
+                detector::detect_deep_alias(&typo_store, &typo_config, None),
             ];
+
+            if avg_cpu > 85.0 {
+                candidates.push(Ok(Some(Behavior::HeatAwareness { cpu_usage: avg_cpu })));
+            }
 
             for result in candidates {
                 let Ok(Some(behavior)) = result else { continue };
                 let already_noted = typo_store
                     .recent_note_exists(behavior.trigger_name(), now - cooldown)
                     .unwrap_or(true);
-                if already_noted { continue; }
+                if already_noted {
+                    continue;
+                }
 
                 let current = typo_store.get_mood().unwrap_or(MoodState::Calm);
                 let mood = update_mood(current, &behavior);
-                if typo_store.set_mood(mood).is_err() { continue; }
+                if typo_store.set_mood(mood).is_err() {
+                    continue;
+                }
 
                 let note = match generate_note(&typo_config, mood, &behavior).await {
                     Ok(n) => n,
@@ -125,8 +152,16 @@ pub async fn run_daemon() -> Result<()> {
                 let final_note = alias_note.unwrap_or(note);
 
                 let directory = choose_default_directory(&typo_config);
-                let _ = drop_note(&directory, &final_note, ascii_for_mood(&mood), &typo_store, &behavior, now).await;
-                
+                let _ = drop_note(
+                    &directory,
+                    &final_note,
+                    ascii_for_mood(&mood),
+                    &typo_store,
+                    &behavior,
+                    now,
+                )
+                .await;
+
                 // Only one note per typo check cycle
                 break;
             }
@@ -151,7 +186,7 @@ pub async fn run_daemon() -> Result<()> {
                     }
                 }
 
-                let Some(behavior) = detector::detect(&store, &config, now)? else {
+                let Some(behavior) = detector::detect(&store, &config, now, &event.path, event.kind)? else {
                     continue;
                 };
                 let current = store.get_mood().unwrap_or(MoodState::Calm);

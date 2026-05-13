@@ -2,19 +2,20 @@ use std::fs;
 use std::path::Path;
 
 use chrono::{Local, TimeZone};
-use yuna::config::{BehaviorConfig, Config, YunaConfig, LimitsConfig, WatchConfig};
+use tempfile::tempdir;
+use yuna::config::{BehaviorConfig, Config, LimitsConfig, WatchConfig, YunaConfig};
 use yuna::detector::{
     detect_cleaning, detect_midnight_worker, detect_procrastinator, detect_typo_repeater,
 };
 use yuna::mood::update_mood;
 use yuna::store::Store;
 use yuna::types::{Behavior, EventKind, MoodState};
-use tempfile::tempdir;
 
 fn test_config(root: &Path) -> Config {
     Config {
         yuna: YunaConfig {
             personality: "yuna".to_string(),
+            language: "en".to_string(),
             ollama_model: "mistral".to_string(),
             ollama_url: "http://127.0.0.1:9".to_string(),
         },

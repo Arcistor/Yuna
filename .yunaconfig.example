@@ -1,5 +1,6 @@
 [yuna]
 personality = "yuna"
+language = "en"
 ollama_model = "mistral:7b-instruct-v0.3-q4_K_M"
 ollama_url = "http://localhost:11434"
 

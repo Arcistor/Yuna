@@ -191,7 +191,8 @@ impl Store {
     }
 
     pub fn last_event_time(&self) -> Result<Option<i64>> {
-        Ok(self.connect()?
+        Ok(self
+            .connect()?
             .query_row("SELECT MAX(timestamp) FROM events", [], |row| row.get(0))?)
     }
 
