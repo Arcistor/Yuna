@@ -99,13 +99,9 @@ pub async fn run_daemon() -> Result<()> {
                 continue;
             }
 
-            // Global cooldown check
             let cooldown = typo_config.limits.cooldown_seconds;
-            if let Ok(Some(last_time)) = typo_store.last_note_time() {
-                if now - last_time < cooldown {
-                    continue;
-                }
-            }
+            let last_note_time = typo_store.last_note_time().ok().flatten().unwrap_or(0);
+            let in_global_cooldown = now - last_note_time < cooldown;
 
             let mut total_cpu = 0.0;
             let cpus = sys.cpus();
@@ -131,6 +127,11 @@ pub async fn run_daemon() -> Result<()> {
 
             for result in candidates {
                 let Ok(Some(behavior)) = result else { continue };
+
+                if in_global_cooldown && !behavior.bypasses_global_cooldown() {
+                    continue;
+                }
+
                 let already_noted = typo_store
                     .recent_note_exists(behavior.trigger_name(), now - cooldown)
                     .unwrap_or(true);
@@ -178,17 +179,18 @@ pub async fn run_daemon() -> Result<()> {
                     continue;
                 }
 
-                // Global cooldown check
+                // Global cooldown check deferred after detect to allow bypasses
                 let cooldown = config.limits.cooldown_seconds;
-                if let Ok(Some(last_time)) = store.last_note_time() {
-                    if now - last_time < cooldown {
-                        continue;
-                    }
-                }
+                let last_note_time = store.last_note_time().ok().flatten().unwrap_or(0);
+                let in_global_cooldown = now - last_note_time < cooldown;
 
                 let Some(behavior) = detector::detect(&store, &config, now, &event.path, event.kind)? else {
                     continue;
                 };
+
+                if in_global_cooldown && !behavior.bypasses_global_cooldown() {
+                    continue;
+                }
                 let current = store.get_mood().unwrap_or(MoodState::Calm);
                 let mood = update_mood(current, &behavior);
                 store.set_mood(mood)?;

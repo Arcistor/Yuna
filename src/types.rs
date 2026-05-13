@@ -337,6 +337,10 @@ impl Behavior {
             ),
         }
     }
+
+    pub fn bypasses_global_cooldown(&self) -> bool {
+        matches!(self, Self::NoteReplied { .. } | Self::Frustration { .. })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

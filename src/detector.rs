@@ -345,8 +345,7 @@ pub fn detect_hoarder(store: &Store, config: &Config, now: i64) -> Result<Option
     if in_cooldown(store, config, "hoarder", now)? {
         return Ok(None);
     }
-    let day_start = local_midnight_timestamp(now);
-    let events = store.query_events(day_start, Some(EventKind::Modify))?;
+    let events = store.query_events(now - 86400, Some(EventKind::Modify))?;
     let mut counts: HashMap<PathBuf, u32> = HashMap::new();
     for event in events {
         *counts.entry(event.path).or_default() += 1;
@@ -588,11 +587,7 @@ pub fn detect_night_owl(store: &Store, config: &Config, now: i64) -> Result<Opti
         Some(t) => t,
         None => return Ok(None),
     };
-    let hour = now_local
-        .format("%H")
-        .to_string()
-        .parse::<u32>()
-        .unwrap_or(12);
+    let hour = now_local.hour();
     if !(2..=5).contains(&hour) {
         return Ok(None);
     }
@@ -619,11 +614,7 @@ pub fn detect_weekend_warrior(
         Some(t) => t,
         None => return Ok(None),
     };
-    let weekday = now_local
-        .format("%u")
-        .to_string()
-        .parse::<u32>()
-        .unwrap_or(1);
+    let weekday = now_local.weekday().number_from_monday();
     if weekday < 6 {
         return Ok(None);
     }
