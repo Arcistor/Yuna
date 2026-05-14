@@ -84,6 +84,11 @@ fn main() -> Result<()> {
                 .into_iter()
                 .filter(|n| n.read_at.is_none())
                 .count();
+            let ollama_online = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?
+                .block_on(yuna::app::ollama_is_running(&config));
+
             println!("running: {}", matches!(daemon.state, DaemonState::Running));
             if let Some(pid) = daemon.pid {
                 println!("pid: {pid}");
@@ -93,6 +98,7 @@ fn main() -> Result<()> {
             }
             println!("mood: {mood}");
             println!("language: {}", config.yuna.language);
+            println!("ollama: {}", if ollama_online { "online" } else { "offline" });
             println!("last_event: {last_event}");
             println!("unread_notes: {note_count}");
         }

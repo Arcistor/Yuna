@@ -240,7 +240,7 @@ fn maybe_inject_alias(config: &Config, behavior: &Behavior) -> Result<Option<Str
     Ok(inject_for_command(command)?.map(|suggestion| suggestion.note()))
 }
 
-async fn ollama_is_running(config: &Config) -> bool {
+pub async fn ollama_is_running(config: &Config) -> bool {
     reqwest::Client::new()
         .get(&config.yuna.ollama_url)
         .timeout(Duration::from_millis(500))
